@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Gamepad2, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { User } from "@supabase/supabase-js"; // Proper Type
-import { supabase } from "../lib/supabase/client"; 
-import { Button } from "../components/ui/button";
-import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { supabase } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +15,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { LogGameButton } from "./shared/LogGameButton";
+import { LogGameButton } from "@/components/shared/LogGameButton";
 
 export default function Navbar() {
   const router = useRouter();
@@ -91,9 +91,11 @@ export default function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-zinc-800" />
-                <DropdownMenuItem className="cursor-pointer">
-                  <UserIcon className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href={`/profile/${username}`}>
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-zinc-800" />
                 <DropdownMenuItem className="cursor-pointer text-red-400" onClick={handleSignOut}>

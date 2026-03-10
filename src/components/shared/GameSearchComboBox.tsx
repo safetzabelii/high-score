@@ -3,8 +3,8 @@
 import { useRef, useEffect } from "react"
 import Image from "next/image"
 import { Search, Loader2, X } from "lucide-react"
-import { useGameSearch, type GameSearchResult } from "../../hooks/useGameSearch"
-import { cn } from "../../lib/utils"
+import { useGameSearch, type GameSearchResult } from "@/hooks/useGameSearch"
+import { cn } from "@/lib/utils"
 
 interface GameSearchComboboxProps {
   onSelect: (game: GameSearchResult) => void

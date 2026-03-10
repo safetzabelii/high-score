@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
-import { X, ChevronLeft, Clock, AlertTriangle, Loader2 } from "lucide-react"
+import { X, ChevronLeft, Clock, AlertTriangle, Loader2, Pencil, Check } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { supabase } from "../../lib/supabase/client"
-import { GameSearchCombobox } from "../shared/GameSearchComboBox"
-import { StarRating } from "../shared/StarRating"
-import { cn } from "../../lib/utils"
+import { supabase } from "@/lib/supabase/client"
+import { GameSearchCombobox } from "@/components/shared/GameSearchComboBox"
+import { StarRating } from "@/components/shared/StarRating"
+import { cn } from "@/lib/utils"
 
 type GameStatus = "played" | "playing" | "backlog" | "abandoned"
 
@@ -27,10 +27,23 @@ export interface GameSearchResult {
   rating?: number | null
 }
 
+/** Existing log data passed when editing from profile */
+export interface ExistingLog {
+  id: string
+  rating: number | null
+  status: GameStatus
+  review_text: string | null
+  platforms: string[]
+  playtime_hours: number | null
+  contains_spoilers: boolean
+  logged_date: string
+}
+
 interface LogGameModalProps {
   open: boolean
   onClose: () => void
   preselectedGame?: GameSearchResult
+  existingLog?: ExistingLog | null
 }
 
 const STATUS_OPTIONS: { value: GameStatus; label: string; emoji: string }[] = [
@@ -45,28 +58,31 @@ const PLATFORM_OPTIONS = [
   "Switch", "iOS", "Android", "Steam Deck",
 ]
 
-export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalProps) {
+export function LogGameModal({ open, onClose, preselectedGame, existingLog }: LogGameModalProps) {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
-  const [step,      setStep]      = useState<1 | 2>(preselectedGame ? 2 : 1)
-  const [game,      setGame]      = useState<GameSearchResult | null>(preselectedGame ?? null)
+  const isEditMode = !!existingLog
+  const [isEditing, setIsEditing] = useState(!!existingLog)
+  const [step, setStep] = useState<1 | 2>(preselectedGame ? 2 : 1)
+  const [game, setGame] = useState<GameSearchResult | null>(preselectedGame ?? null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const [rating,           setRating]           = useState<number | null>(null)
-  const [status,           setStatus]           = useState<GameStatus>("played")
-  const [reviewText,       setReviewText]       = useState("")
-  const [platforms,        setPlatforms]        = useState<string[]>([])
-  const [playtime,         setPlaytime]         = useState("")
-  const [containsSpoilers, setContainsSpoilers] = useState(false)
+  // Form fields
+  const [rating,           setRating]           = useState<number | null>(existingLog?.rating ?? null)
+  const [status,           setStatus]           = useState<GameStatus>(existingLog?.status ?? "played")
+  const [reviewText,       setReviewText]       = useState(existingLog?.review_text ?? "")
+  const [platforms,        setPlatforms]        = useState<string[]>(existingLog?.platforms ?? [])
+  const [playtime,         setPlaytime]         = useState(existingLog?.playtime_hours?.toString() ?? "")
+  const [containsSpoilers, setContainsSpoilers] = useState(existingLog?.contains_spoilers ?? false)
   const [loggedDate,       setLoggedDate]       = useState(
-    new Date().toISOString().split("T")[0]
+    existingLog?.logged_date ?? new Date().toISOString().split("T")[0]
   )
 
-  // Portal needs to be mounted client-side
+  const [fetchingExisting, setFetchingExisting] = useState(false)
+
   useEffect(() => { setMounted(true) }, [])
 
-  // Lock body scroll when open
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden"
@@ -76,11 +92,27 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
     return () => { document.body.style.overflow = "" }
   }, [open])
 
+  // When modal opens with existingLog, prefill form
+  useEffect(() => {
+    if (open && existingLog) {
+      setRating(existingLog.rating)
+      setStatus(existingLog.status)
+      setReviewText(existingLog.review_text ?? "")
+      setPlatforms(existingLog.platforms ?? [])
+      setPlaytime(existingLog.playtime_hours?.toString() ?? "")
+      setContainsSpoilers(existingLog.contains_spoilers)
+      setLoggedDate(existingLog.logged_date)
+      setIsEditing(true)
+      setStep(2)
+    }
+  }, [open, existingLog])
+
   function handleClose() {
     onClose()
     setTimeout(() => {
       setStep(preselectedGame ? 2 : 1)
       setGame(preselectedGame ?? null)
+      setIsEditing(!!existingLog)
       resetForm()
     }, 200)
   }
@@ -95,10 +127,45 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
     setLoggedDate(new Date().toISOString().split("T")[0])
   }
 
-  function handleGameSelect(selected: GameSearchResult) {
+  // After selecting a game from search, check if already logged
+  const handleGameSelect = useCallback(async (selected: GameSearchResult) => {
     setGame(selected)
-    setStep(2)
-  }
+    setFetchingExisting(true)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setStep(2); return }
+
+      const gameId = selected.igdb_id ?? selected.id ?? Number(selected.objectID)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: entry } = await (supabase
+        .from("game_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("game_id", gameId)
+        .single() as any)
+
+      if (entry) {
+        setRating(entry.rating)
+        setStatus(entry.status as GameStatus)
+        setReviewText(entry.review_text ?? "")
+        setPlatforms(entry.platforms ?? [])
+        setPlaytime(entry.playtime_hours?.toString() ?? "")
+        setContainsSpoilers(entry.contains_spoilers)
+        setLoggedDate(entry.logged_date)
+        setIsEditing(true)
+        toast.info(`You've already logged ${selected.title} — editing your entry.`)
+      } else {
+        setIsEditing(false)
+        resetForm()
+      }
+    } catch {
+      setIsEditing(false)
+    } finally {
+      setFetchingExisting(false)
+      setStep(2)
+    }
+  }, [])
 
   function togglePlatform(p: string) {
     setPlatforms((prev) =>
@@ -137,12 +204,42 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
       }, { onConflict: "user_id,game_id" })
       if (logError) throw logError
 
-      toast.success(`${game.title} logged!`)
+      toast.success(isEditing ? `${game.title} updated!` : `${game.title} logged!`)
       handleClose()
       router.refresh()
     } catch (err) {
       console.error(err)
-      toast.error("Something went wrong. Please try again.")
+      const message = err instanceof Error ? err.message : "Something went wrong."
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!game) return
+    const confirmed = window.confirm(`Remove ${game.title} from your log?`)
+    if (!confirmed) return
+
+    setIsLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const gameId = game.igdb_id ?? game.id ?? Number(game.objectID)
+      const { error } = await supabase
+        .from("game_logs")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("game_id", gameId)
+      if (error) throw error
+
+      toast.success(`${game.title} removed from your log.`)
+      handleClose()
+      router.refresh()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete."
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }
@@ -150,34 +247,38 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
 
   if (!mounted || !open) return null
 
+  const today = new Date().toISOString().split("T")[0]
+
   const modalContent = (
-    // This renders directly into document.body — escapes all z-index/overflow traps
     <div
       style={{ position: "fixed", inset: 0, zIndex: 9999 }}
       className="flex items-center justify-center p-4"
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
-      {/* Backdrop */}
       <div
         style={{ position: "fixed", inset: 0, zIndex: -1 }}
         className="bg-black/70 backdrop-blur-sm"
         onClick={handleClose}
       />
 
-      {/* Modal panel — no overflow on step 1 so dropdown is not clipped */}
-      <div className={`relative w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60 ${step === 2 ? "max-h-[90vh] overflow-y-auto" : ""}`}>
+      <div className={cn(
+        "relative w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/60",
+        step === 2 ? "max-h-[90vh] overflow-y-auto" : ""
+      )}>
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
           <div className="flex items-center gap-2">
-            {step === 2 && !preselectedGame && (
-              <button type="button" onClick={() => { setStep(1); setGame(null) }}
+            {step === 2 && !preselectedGame && !isEditMode && (
+              <button type="button" onClick={() => { setStep(1); setGame(null); resetForm(); setIsEditing(false) }}
                 className="mr-1 rounded-md p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            <h2 className="text-base font-semibold text-zinc-100">
-              {step === 1 ? "Log a Game" : "Log Entry"}
+            <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+              {step === 1 ? "Log a Game" : isEditing ? (
+                <><Pencil className="h-3.5 w-3.5 text-indigo-400" /> Edit Log</>
+              ) : "Log Entry"}
             </h2>
           </div>
           <button type="button" onClick={handleClose}
@@ -186,7 +287,7 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
           </button>
         </div>
 
-        {/* Step 1 — Search — extra bottom padding gives the dropdown room */}
+        {/* Step 1 — Search */}
         {step === 1 && (
           <div className="p-6 pb-64">
             <p className="mb-4 text-sm text-zinc-400">Search for the game you want to log.</p>
@@ -194,8 +295,16 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
           </div>
         )}
 
+        {/* Loading existing log check */}
+        {fetchingExisting && (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-zinc-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Checking your library...
+          </div>
+        )}
+
         {/* Step 2 — Form */}
-        {step === 2 && game && (
+        {step === 2 && game && !fetchingExisting && (
           <form onSubmit={handleSubmit}>
             <div className="p-6 space-y-6">
 
@@ -208,12 +317,17 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
                     <div className="flex h-full items-center justify-center text-zinc-600 text-xs">?</div>
                   )}
                 </div>
-                <div>
-                  <p className="font-semibold text-zinc-100 leading-tight">{game.title}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-zinc-100 leading-tight truncate">{game.title}</p>
                   <p className="text-xs text-zinc-500 mt-0.5">
                     {[game.release_year, game.developer].filter(Boolean).join(" · ")}
                   </p>
                 </div>
+                {isEditing && (
+                  <span className="flex items-center gap-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-1 text-xs font-medium text-indigo-300 flex-shrink-0">
+                    <Check className="h-3 w-3" /> Logged
+                  </span>
+                )}
               </div>
 
               {/* Rating */}
@@ -265,7 +379,7 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
                   Review <span className="text-zinc-600 normal-case">(optional)</span>
                 </label>
                 <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)}
-                  placeholder="What did you think? (Markdown supported)" rows={4}
+                  placeholder="What did you think?" rows={4}
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none transition-colors"
                 />
                 {reviewText.length > 0 && (
@@ -287,29 +401,40 @@ export function LogGameModal({ open, onClose, preselectedGame }: LogGameModalPro
                   <label className="text-xs font-medium uppercase tracking-wider text-zinc-500 flex items-center gap-1">
                     <Clock className="h-3 w-3" /> Playtime (hrs)
                   </label>
-                  <input type="number" min="0" max="9999" value={playtime}
+                  <input type="number" min="1" max="9999" value={playtime}
                     onChange={(e) => setPlaytime(e.target.value)} placeholder="e.g. 42"
                     className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-medium uppercase tracking-wider text-zinc-500">Date Played</label>
-                  <input type="date" value={loggedDate} onChange={(e) => setLoggedDate(e.target.value)}
+                  <input type="date" value={loggedDate} max={today}
+                    onChange={(e) => setLoggedDate(e.target.value)}
                     className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors [color-scheme:dark]" />
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="border-t border-zinc-800 px-6 py-4 flex items-center justify-end gap-3">
-              <button type="button" onClick={handleClose}
-                className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
-                Cancel
-              </button>
-              <button type="submit" disabled={isLoading}
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isLoading ? "Saving…" : "Save Log"}
-              </button>
+            <div className="border-t border-zinc-800 px-6 py-4 flex items-center justify-between">
+              <div>
+                {isEditing && (
+                  <button type="button" onClick={handleDelete} disabled={isLoading}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50">
+                    Remove from log
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={handleClose}
+                  className="rounded-lg px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={isLoading}
+                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isLoading ? "Saving..." : isEditing ? "Update Log" : "Save Log"}
+                </button>
+              </div>
             </div>
           </form>
         )}
