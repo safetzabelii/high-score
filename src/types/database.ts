@@ -1,13 +1,6 @@
-// ============================================================
-//  src/types/database.ts
-//  Hand-written types matching 001_initial_schema.sql
-//  For auto-generated types run:
-//    npx supabase gen types typescript --project-id <your-project-id> > src/types/supabase.ts
-// ============================================================
 
 export type GameStatus = 'played' | 'playing' | 'backlog' | 'abandoned'
 
-// ── Raw table rows (what Supabase returns) ───────────────────
 
 export interface UserRow {
   id: string
@@ -128,8 +121,6 @@ export type UpdateGameLog = Partial<Omit<GameLogRow, 'id' | 'user_id' | 'game_id
 export type InsertGame    = Omit<GameRow, 'created_at'>
 export type UpdateUser    = Partial<Pick<UserRow, 'display_name' | 'avatar_url' | 'bio'>>
 
-// ── Supabase Database type map (for createClient<Database>()) ─
-//  Extend this as you add tables.
 
 export interface Database {
   public: {
