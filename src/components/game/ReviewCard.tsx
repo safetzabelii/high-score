@@ -2,12 +2,15 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { User as UserIcon } from "lucide-react"
-import { StarRating } from "@/components/shared/StarRating"
+import { User as UserIcon, Star } from "lucide-react"
+import { LikeButton } from "@/components/shared/LikeButton"
+import { CommentSection } from "@/components/shared/CommentSection"
+import { SpoilerGuard } from "@/components/shared/SpoilerGuard"
 
 interface ReviewCardProps {
   review: {
     id: string
+    user_id: string
     rating: number | null
     review_text: string | null
     platforms: string[]
@@ -20,17 +23,27 @@ interface ReviewCardProps {
       avatar_url: string | null
     }
   }
+  currentUserId: string | null
+  initialLiked: boolean
+  initialLikeCount: number
+  initialCommentCount: number
 }
 
-export function ReviewCard({ review }: ReviewCardProps) {
+export function ReviewCard({
+  review,
+  currentUserId,
+  initialLiked,
+  initialLikeCount,
+  initialCommentCount,
+}: ReviewCardProps) {
   const displayName = review.users.display_name || review.users.username
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
+    <div className="border-b border-zinc-800/40 pb-5 mb-5 last:border-0 last:pb-0 last:mb-0">
+      {/* Header: avatar + name + rating */}
+      <div className="flex items-center gap-3 mb-3">
         <Link href={`/profile/${review.users.username}`} className="flex-shrink-0">
-          <div className="relative h-9 w-9 overflow-hidden rounded-full border border-zinc-700 bg-zinc-800">
+          <div className="relative h-8 w-8 overflow-hidden rounded-full ring-1 ring-zinc-700/40 bg-zinc-800 hover:ring-zinc-600 transition-all">
             {review.users.avatar_url ? (
               <Image
                 src={review.users.avatar_url}
@@ -41,64 +54,91 @@ export function ReviewCard({ review }: ReviewCardProps) {
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <UserIcon className="h-4 w-4 text-zinc-600" />
+                <UserIcon className="h-3.5 w-3.5 text-zinc-600" />
               </div>
             )}
           </div>
         </Link>
 
         <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             <Link
               href={`/profile/${review.users.username}`}
-              className="text-sm font-medium text-zinc-200 hover:text-zinc-50 transition-colors"
+              className="text-sm font-semibold text-zinc-200 hover:text-zinc-50 transition-colors"
             >
               {displayName}
             </Link>
-            <span className="text-xs text-zinc-600">@{review.users.username}</span>
-            {review.rating != null && review.rating > 0 && (
-              <StarRating value={review.rating} onChange={() => {}} readonly size="sm" />
-            )}
-          </div>
-
-          {/* Review text */}
-          {review.review_text && (
-            <div className="mt-2">
-              {review.contains_spoilers ? (
-                <details className="group">
-                  <summary className="text-xs text-amber-500 cursor-pointer hover:text-amber-400">
-                    Contains spoilers — click to reveal
-                  </summary>
-                  <p className="mt-1 text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
-                    {review.review_text}
-                  </p>
-                </details>
-              ) : (
-                <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
-                  {review.review_text}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Meta */}
-          <div className="mt-2 flex items-center gap-3 text-xs text-zinc-600">
-            <span>
-              {new Date(review.logged_date).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
-            {review.platforms.length > 0 && (
-              <span>{review.platforms.join(", ")}</span>
-            )}
-            {review.playtime_hours != null && (
-              <span>{review.playtime_hours}h played</span>
-            )}
+            <span className="text-[11px] text-zinc-600">@{review.users.username}</span>
           </div>
         </div>
+
+        {/* Star rating — inline compact */}
+        {review.rating != null && review.rating > 0 && (
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            {Array.from({ length: Math.floor(review.rating) }).map((_, i) => (
+              <Star key={i} className="h-3.5 w-3.5 fill-indigo-400 text-indigo-400" />
+            ))}
+            {review.rating % 1 >= 0.5 && (
+              <Star className="h-3.5 w-3.5 fill-indigo-400/50 text-indigo-400" />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Review text */}
+      {review.review_text && (
+        <div className="mb-3">
+          <SpoilerGuard containsSpoilers={review.contains_spoilers}>
+            <p className="text-[13px] text-zinc-400 leading-relaxed whitespace-pre-line">
+              {review.review_text}
+            </p>
+          </SpoilerGuard>
+        </div>
+      )}
+
+      {/* Meta + actions row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[11px] text-zinc-600">
+          <span className="tabular-nums">
+            {new Date(review.logged_date).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </span>
+          {review.platforms.length > 0 && (
+            <>
+              <span className="text-zinc-700">&middot;</span>
+              <span>{review.platforms.join(", ")}</span>
+            </>
+          )}
+          {review.playtime_hours != null && (
+            <>
+              <span className="text-zinc-700">&middot;</span>
+              <span>{review.playtime_hours}h</span>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <LikeButton
+            logId={review.id}
+            logOwnerId={review.user_id}
+            currentUserId={currentUserId}
+            initialLiked={initialLiked}
+            initialCount={initialLikeCount}
+          />
+        </div>
+      </div>
+
+      {/* Comments — full width below the review */}
+      <div className="mt-3">
+        <CommentSection
+          logId={review.id}
+          logOwnerId={review.user_id}
+          currentUserId={currentUserId}
+          initialCount={initialCommentCount}
+        />
       </div>
     </div>
   )

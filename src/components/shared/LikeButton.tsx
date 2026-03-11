@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react"
 import { Heart } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
+import { createNotification, removeNotification } from "@/lib/notifications"
 import { cn } from "@/lib/utils"
 
 interface LikeButtonProps {
   logId: string
+  logOwnerId: string
   currentUserId: string | null
   initialLiked: boolean
   initialCount: number
@@ -14,6 +16,7 @@ interface LikeButtonProps {
 
 export function LikeButton({
   logId,
+  logOwnerId,
   currentUserId,
   initialLiked,
   initialCount,
@@ -34,7 +37,6 @@ export function LikeButton({
     startTransition(async () => {
       try {
         if (wasLiked) {
-          // Remove like
           const { error } = await supabase
             .from("likes")
             .delete()
@@ -42,17 +44,29 @@ export function LikeButton({
             .eq("log_id", logId)
 
           if (error) throw error
+
+          removeNotification({
+            userId: logOwnerId,
+            actorId: currentUserId,
+            type: "like",
+            logId,
+          })
         } else {
-          // Add like
           const { error } = await (supabase.from("likes") as any).insert({
             user_id: currentUserId,
             log_id: logId,
           })
 
           if (error) throw error
+
+          createNotification({
+            userId: logOwnerId,
+            actorId: currentUserId,
+            type: "like",
+            logId,
+          })
         }
       } catch {
-        // Rollback on error
         setLiked(wasLiked)
         setCount(prevCount)
       }
@@ -65,19 +79,23 @@ export function LikeButton({
       onClick={toggleLike}
       disabled={!currentUserId || isPending}
       className={cn(
-        "flex items-center gap-1 text-xs transition-colors",
+        "flex items-center gap-1.5 text-xs transition-all rounded-md px-1.5 py-0.5 -mx-1.5",
         liked
           ? "text-rose-400 hover:text-rose-300"
           : "text-zinc-600 hover:text-rose-400",
-        !currentUserId && "cursor-default opacity-50"
+        !currentUserId && "cursor-default opacity-50",
+        liked && "hover:bg-rose-500/5"
       )}
       aria-label={liked ? "Unlike" : "Like"}
     >
       <Heart
-        className={cn("h-3.5 w-3.5", liked && "fill-current")}
+        className={cn(
+          "h-3.5 w-3.5 transition-transform",
+          liked && "fill-current scale-110"
+        )}
       />
       {count > 0 && (
-        <span className="tabular-nums">{count}</span>
+        <span className="tabular-nums font-medium">{count}</span>
       )}
     </button>
   )

@@ -3,6 +3,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Metadata } from "next"
 import { Gamepad2, Star, Users, MessageSquare } from "lucide-react"
+import { ShareButton } from "@/components/shared/ShareButton"
 import { getGameBySlug, shapeGame, coverUrl } from "@/lib/igdb/fetch"
 import { syncGameToAlgolia } from "@/lib/igdb/algolia/client"
 import { createClient } from "@/lib/supabase/server"
@@ -19,9 +20,24 @@ export async function generateMetadata({ params }: GamePageProps): Promise<Metad
   const raw = await getGameBySlug(slug)
   if (!raw) return { title: "Game not found — HIGH-SCORE" }
   const game = shapeGame(raw)
+  const description = raw.summary?.slice(0, 160) ?? `${game.title} on HIGH-SCORE`
+  const ogImage = game.cover_url ?? undefined
+
   return {
     title: `${game.title} — HIGH-SCORE`,
-    description: raw.summary?.slice(0, 160) ?? `${game.title} on HIGH-SCORE`,
+    description,
+    openGraph: {
+      title: `${game.title} — HIGH-SCORE`,
+      description,
+      images: ogImage ? [{ url: ogImage, width: 264, height: 374 }] : [],
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: `${game.title} — HIGH-SCORE`,
+      description,
+      images: ogImage ? [ogImage] : [],
+    },
   }
 }
 
@@ -78,6 +94,41 @@ export default async function GamePage({ params }: GamePageProps) {
   const reviews = logs.filter(
     (l) => l.review_text && l.review_text.trim().length > 0
   )
+
+  // 5b. Fetch like data for reviews
+  const reviewIds = reviews.map((r) => r.id)
+
+  const { data: likeCounts } = await (supabase
+    .from("likes")
+    .select("log_id")
+    .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any)
+
+  const likeCountMap = new Map<string, number>()
+  for (const like of (likeCounts ?? []) as { log_id: string }[]) {
+    likeCountMap.set(like.log_id, (likeCountMap.get(like.log_id) ?? 0) + 1)
+  }
+
+  let likedSet = new Set<string>()
+  if (currentUser) {
+    const { data: userLikes } = await supabase
+      .from("likes")
+      .select("log_id")
+      .eq("user_id", currentUser.id)
+      .in("log_id", reviewIds.length > 0 ? reviewIds : [""])
+
+    likedSet = new Set((userLikes ?? []).map((l) => l.log_id))
+  }
+
+  // 5c. Fetch comment counts for reviews
+  const { data: commentCounts } = await (supabase
+    .from("comments")
+    .select("log_id")
+    .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any)
+
+  const commentCountMap = new Map<string, number>()
+  for (const c of (commentCounts ?? []) as { log_id: string }[]) {
+    commentCountMap.set(c.log_id, (commentCountMap.get(c.log_id) ?? 0) + 1)
+  }
 
   // 6. Current user's log (if any)
   const currentUserLog = currentUser
@@ -249,7 +300,7 @@ export default async function GamePage({ params }: GamePageProps) {
             </div>
 
             {/* Actions */}
-            <div className="mt-5">
+            <div className="mt-5 flex items-center gap-4">
               {currentUser ? (
                 <GamePageActions
                   game={gameForModal}
@@ -263,6 +314,7 @@ export default async function GamePage({ params }: GamePageProps) {
                   Sign in to log this game
                 </Link>
               )}
+              <ShareButton url={`/game/${slug}`} title={`${game.title} on HIGH-SCORE`} />
             </div>
           </div>
         </div>
@@ -295,7 +347,14 @@ export default async function GamePage({ params }: GamePageProps) {
           ) : (
             <div className="space-y-4">
               {reviews.map((review) => (
-                <ReviewCard key={review.id} review={review as any} />
+                <ReviewCard
+                  key={review.id}
+                  review={review as any}
+                  currentUserId={currentUser?.id ?? null}
+                  initialLiked={likedSet.has(review.id)}
+                  initialLikeCount={likeCountMap.get(review.id) ?? 0}
+                  initialCommentCount={commentCountMap.get(review.id) ?? 0}
+                />
               ))}
             </div>
           )}

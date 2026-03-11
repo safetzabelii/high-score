@@ -2,3 +2,125 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/*
+ * HIGH-SCORE Design System
+ * Theme: Dark-first editorial gaming aesthetic
+ * Override zinc palette for seamless dark/light mode via CSS variables
+ */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --zinc-50: #fafafa;
+    --zinc-100: #f4f4f5;
+    --zinc-200: #e4e4e7;
+    --zinc-300: #d4d4d8;
+    --zinc-400: #a1a1aa;
+    --zinc-500: #71717a;
+    --zinc-600: #52525b;
+    --zinc-700: #3f3f46;
+    --zinc-800: #27272a;
+    --zinc-900: #18181b;
+    --zinc-950: #09090b;
+  }
+
+  :root:not(.dark) {
+    color-scheme: light;
+    --zinc-50: #09090b;
+    --zinc-100: #18181b;
+    --zinc-200: #27272a;
+    --zinc-300: #3f3f46;
+    --zinc-400: #52525b;
+    --zinc-500: #71717a;
+    --zinc-600: #a1a1aa;
+    --zinc-700: #d4d4d8;
+    --zinc-800: #e4e4e7;
+    --zinc-900: #f4f4f5;
+    --zinc-950: #ffffff;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--zinc-700) transparent;
+  }
+
+  /* Smooth transitions for theme switching */
+  html {
+    transition: color 0.2s ease, background-color 0.2s ease;
+  }
+
+  /* Better focus rings globally */
+  :focus-visible {
+    outline: 2px solid #818cf8;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* Override TW4's default zinc palette to use our CSS variables */
+@theme inline {
+  --color-zinc-50: var(--zinc-50);
+  --color-zinc-100: var(--zinc-100);
+  --color-zinc-200: var(--zinc-200);
+  --color-zinc-300: var(--zinc-300);
+  --color-zinc-400: var(--zinc-400);
+  --color-zinc-500: var(--zinc-500);
+  --color-zinc-600: var(--zinc-600);
+  --color-zinc-700: var(--zinc-700);
+  --color-zinc-800: var(--zinc-800);
+  --color-zinc-900: var(--zinc-900);
+  --color-zinc-950: var(--zinc-950);
+}
+
+/* Card hover lift effect */
+@layer utilities {
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .glass {
+    background: rgba(24, 24, 27, 0.7);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.1), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Subtle noise texture for backgrounds */
+  .noise::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    opacity: 0.015;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+}

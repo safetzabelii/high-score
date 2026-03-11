@@ -54,6 +54,45 @@ export interface LikeRow {
   created_at: string
 }
 
+export interface ListRow {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  is_public: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ListItemRow {
+  id: string
+  list_id: string
+  game_id: number
+  note: string | null
+  position: number
+  created_at: string
+}
+
+export interface CommentRow {
+  id: string
+  log_id: string
+  user_id: string
+  text: string
+  created_at: string
+}
+
+export type NotificationType = 'like' | 'follow' | 'comment'
+
+export interface NotificationRow {
+  id: string
+  user_id: string           // recipient
+  actor_id: string          // who triggered it
+  type: NotificationType
+  log_id: string | null     // for likes
+  read: boolean
+  created_at: string
+}
+
 // ── View: feed_entries (joined row from the DB view) ─────────
 
 export interface FeedEntry {
@@ -119,6 +158,26 @@ export interface Database {
         Row: LikeRow
         Insert: Omit<LikeRow, 'id' | 'created_at'>
         Update: never
+      }
+      notifications: {
+        Row: NotificationRow
+        Insert: Omit<NotificationRow, 'id' | 'created_at' | 'read'>
+        Update: Partial<Pick<NotificationRow, 'read'>>
+      }
+      lists: {
+        Row: ListRow
+        Insert: Omit<ListRow, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Pick<ListRow, 'title' | 'description' | 'is_public'>>
+      }
+      list_items: {
+        Row: ListItemRow
+        Insert: Omit<ListItemRow, 'id' | 'created_at'>
+        Update: Partial<Pick<ListItemRow, 'note' | 'position'>>
+      }
+      comments: {
+        Row: CommentRow
+        Insert: Omit<CommentRow, 'id' | 'created_at'>
+        Update: Partial<Pick<CommentRow, 'text'>>
       }
     }
     Views: {

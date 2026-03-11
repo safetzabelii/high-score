@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
+import { createNotification, removeNotification } from "@/lib/notifications"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -37,6 +38,7 @@ export function FollowButton({
           .eq("follower_id", currentUserId)
           .eq("following_id", targetUserId)
         if (error) throw error
+        removeNotification({ userId: targetUserId, actorId: currentUserId, type: "follow" })
       } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.from("follows") as any).insert({
@@ -44,6 +46,7 @@ export function FollowButton({
           following_id: targetUserId,
         })
         if (error) throw error
+        createNotification({ userId: targetUserId, actorId: currentUserId, type: "follow" })
       }
       router.refresh()
     } catch {

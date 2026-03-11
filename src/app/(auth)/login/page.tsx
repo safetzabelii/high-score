@@ -30,7 +30,7 @@ type LoginFormValues = z.infer<typeof formSchema>;
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+      <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
       </div>
     }>
@@ -48,7 +48,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
-  // Fast client-side guard: if a session already exists, skip the form entirely.
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -79,36 +78,36 @@ function LoginForm() {
     }
 
     toast.success("Welcome back!");
-
-    // router.refresh() tells Next.js to re-run Server Components so they pick up
-    // the new auth cookie, then we navigate to the intended destination.
     router.refresh();
     router.push(redirectTo);
   }
 
-  // Show a spinner while we check for an existing session to avoid a flash of
-  // the login form before the redirect fires.
   if (checkingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+      <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
-      <div className="w-full max-w-md space-y-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center px-4">
+      {/* Decorative background gradient */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 h-[400px] w-[600px] rounded-full bg-indigo-600/5 blur-[120px]" />
+      </div>
+
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/80 p-8 shadow-2xl backdrop-blur-sm gradient-border">
         {/* Header */}
-        <div className="flex flex-col items-center space-y-3 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-800">
-            <Gamepad2 className="h-7 w-7 text-zinc-50" />
+        <div className="flex flex-col items-center space-y-4 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-600/25">
+            <Gamepad2 className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-50">
               Welcome back
             </h1>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="mt-1.5 text-sm text-zinc-500">
               Sign in to your account to continue
             </p>
           </div>
@@ -126,13 +125,13 @@ function LoginForm() {
                 field: ControllerRenderProps<LoginFormValues, "email">;
               }) => (
                 <FormItem>
-                  <FormLabel className="text-zinc-300">Email</FormLabel>
+                  <FormLabel className="text-zinc-300 text-sm">Email</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
                       placeholder="you@example.com"
                       autoComplete="email"
-                      className="border-zinc-700 bg-zinc-950 text-zinc-50 placeholder:text-zinc-600 focus-visible:ring-zinc-500"
+                      className="border-zinc-700/80 bg-zinc-950/50 text-zinc-50 placeholder:text-zinc-600 focus-visible:ring-indigo-500 h-11"
                       {...field}
                     />
                   </FormControl>
@@ -151,10 +150,10 @@ function LoginForm() {
               }) => (
                 <FormItem>
                   <div className="flex items-center justify-between">
-                    <FormLabel className="text-zinc-300">Password</FormLabel>
+                    <FormLabel className="text-zinc-300 text-sm">Password</FormLabel>
                     <Link
                       href="/forgot-password"
-                      className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                      className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
                     >
                       Forgot password?
                     </Link>
@@ -164,7 +163,7 @@ function LoginForm() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         autoComplete="current-password"
-                        className="border-zinc-700 bg-zinc-950 text-zinc-50 pr-10 focus-visible:ring-zinc-500"
+                        className="border-zinc-700/80 bg-zinc-950/50 text-zinc-50 pr-10 focus-visible:ring-indigo-500 h-11"
                         {...field}
                       />
                       <button
@@ -188,13 +187,13 @@ function LoginForm() {
 
             <Button
               type="submit"
-              className="w-full bg-zinc-50 text-zinc-950 hover:bg-zinc-200 transition-colors font-medium"
+              className="w-full bg-indigo-600 text-white hover:bg-indigo-500 transition-all font-semibold h-11 shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
               disabled={isLoading}
             >
               {isLoading && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isLoading ? "Signing in…" : "Sign in"}
+              {isLoading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </Form>
@@ -204,7 +203,7 @@ function LoginForm() {
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
-            className="text-zinc-300 hover:text-zinc-50 transition-colors font-medium"
+            className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
           >
             Sign up
           </Link>

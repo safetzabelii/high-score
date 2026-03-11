@@ -22,10 +22,10 @@ export function LogGameButton({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "flex items-center gap-2 rounded-lg font-medium transition-all",
+          "flex items-center gap-1.5 rounded-lg font-semibold transition-all active:scale-[0.97]",
           variant === "default" && [
             "bg-indigo-600 hover:bg-indigo-500 text-white",
-            "px-4 py-2 text-sm shadow-lg shadow-indigo-900/30",
+            "px-3.5 py-2 text-sm shadow-lg shadow-indigo-600/25",
           ],
           variant === "compact" && [
             "bg-zinc-800 hover:bg-zinc-700 text-zinc-200",
@@ -35,7 +35,8 @@ export function LogGameButton({
         )}
       >
         <Plus className="h-4 w-4" />
-        Log a Game
+        <span className="hidden sm:inline">Log a Game</span>
+        <span className="sm:hidden">Log</span>
       </button>
 
       <LogGameModal open={open} onClose={() => setOpen(false)} />
