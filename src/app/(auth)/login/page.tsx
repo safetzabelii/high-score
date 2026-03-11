@@ -94,13 +94,13 @@ function LoginForm() {
     <div className="flex min-h-screen items-center justify-center px-4">
       {/* Decorative background gradient */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 h-[400px] w-[600px] rounded-full bg-indigo-600/5 blur-[120px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 h-[400px] w-[600px] rounded-full bg-hs-green/5 blur-[120px]" />
       </div>
 
       <div className="w-full max-w-md space-y-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/80 p-8 shadow-2xl backdrop-blur-sm gradient-border">
         {/* Header */}
         <div className="flex flex-col items-center space-y-4 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-600/25">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-hs-green-button shadow-lg">
             <Gamepad2 className="h-7 w-7 text-white" />
           </div>
           <div>
@@ -131,7 +131,7 @@ function LoginForm() {
                       type="email"
                       placeholder="you@example.com"
                       autoComplete="email"
-                      className="border-zinc-700/80 bg-zinc-950/50 text-zinc-50 placeholder:text-zinc-600 focus-visible:ring-indigo-500 h-11"
+                      className="border-zinc-700/80 bg-zinc-950/50 text-zinc-50 placeholder:text-zinc-600 focus-visible:ring-hs-green h-11"
                       {...field}
                     />
                   </FormControl>
@@ -163,7 +163,7 @@ function LoginForm() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         autoComplete="current-password"
-                        className="border-zinc-700/80 bg-zinc-950/50 text-zinc-50 pr-10 focus-visible:ring-indigo-500 h-11"
+                        className="border-zinc-700/80 bg-zinc-950/50 text-zinc-50 pr-10 focus-visible:ring-hs-green h-11"
                         {...field}
                       />
                       <button
@@ -187,7 +187,7 @@ function LoginForm() {
 
             <Button
               type="submit"
-              className="w-full bg-indigo-600 text-white hover:bg-indigo-500 transition-all font-semibold h-11 shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
+              className="w-full bg-hs-green-button text-white hover:bg-hs-green-hover transition-all font-semibold h-11 shadow-lg active:scale-[0.98]"
               disabled={isLoading}
             >
               {isLoading && (
@@ -203,7 +203,7 @@ function LoginForm() {
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
-            className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+            className="text-hs-green hover:text-hs-blue transition-colors font-medium"
           >
             Sign up
           </Link>

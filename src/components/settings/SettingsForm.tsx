@@ -38,7 +38,7 @@ function SpoilerToggle() {
         onClick={toggleSpoilers}
         className={cn(
           "relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer",
-          hideSpoilers ? "bg-indigo-600" : "bg-zinc-700"
+          hideSpoilers ? "bg-hs-green-button" : "bg-zinc-700"
         )}
       >
         <span
@@ -157,7 +157,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="mt-1 inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50"
+            className="mt-1 inline-flex items-center gap-1.5 text-xs text-hs-green hover:text-hs-blue transition-colors disabled:opacity-50"
           >
             <Upload className="h-3 w-3" />
             Upload photo
@@ -183,7 +183,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           maxLength={50}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-hs-green focus:border-transparent transition-colors"
         />
       </div>
 
@@ -198,7 +198,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
           value={avatarUrl}
           onChange={(e) => setAvatarUrl(e.target.value)}
           placeholder="https://example.com/your-avatar.jpg"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-hs-green focus:border-transparent transition-colors"
         />
         <p className="mt-1 text-xs text-zinc-600">
           Or paste a direct link to an image
@@ -217,7 +217,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
           rows={4}
           maxLength={300}
           placeholder="Tell others about yourself..."
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors resize-none"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-hs-green focus:border-transparent transition-colors resize-none"
         />
         <p className="mt-1 text-xs text-zinc-600 text-right">
           {bio.length}/300
@@ -252,7 +252,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
         disabled={saving}
         className={cn(
           "inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all",
-          "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/30",
+          "bg-hs-green-button hover:bg-hs-green-hover text-white shadow-lg",
           saving && "opacity-70 cursor-not-allowed"
         )}
       >

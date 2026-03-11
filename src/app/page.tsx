@@ -2,10 +2,12 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Gamepad2, Star, Users, User as UserIcon, ArrowRight, MessageSquare, Heart } from "lucide-react"
+import { Gamepad2, Star, User as UserIcon, MessageSquare, Heart } from "lucide-react"
 import { LogGameButton } from "@/components/shared/LogGameButton"
 import { InfiniteFeed } from "@/components/feed/InfiniteFeed"
-import { getPopularGames, shapeGame, type ShapedGame } from "@/lib/igdb/fetch"
+import { SectionHeading } from "@/components/shared/SectionHeading"
+import { GameCover } from "@/components/shared/GameCover"
+import { getPopularGames, shapeGame } from "@/lib/igdb/fetch"
 import { syncGamesToAlgolia } from "@/lib/igdb/algolia/client"
 import type { UserRow, GameLogRow, GameRow } from "@/types/database"
 
@@ -17,7 +19,6 @@ export default async function HomePage() {
 
   if (!user) redirect("/login")
 
-  // ─── Parallel data fetching ────────────────────────────────
   const [
     profileRes,
     followingRes,
@@ -42,11 +43,9 @@ export default async function HomePage() {
   const followingIds = (followingRes.data ?? []).map((f: { following_id: string }) => f.following_id)
   const feedUserIds = [...followingIds, user.id]
 
-  // ─── Popular games from IGDB ───────────────────────────────
   const popularGames = popularRaw.map(shapeGame)
   syncGamesToAlgolia(popularGames).catch(() => {})
 
-  // ─── Trending in community (deduped recent logs) ──────────
   const seenIds = new Set<number>()
   const trendingGames: GameRow[] = []
   for (const log of (recentLogsRes.data ?? []) as { game_id: number; games: GameRow }[]) {
@@ -57,7 +56,6 @@ export default async function HomePage() {
     }
   }
 
-  // ─── Players to follow ────────────────────────────────────
   let usersToShow: (UserRow & { log_count?: number })[] = []
   if (activeUsersRes.data && activeUsersRes.data.length > 0) {
     usersToShow = activeUsersRes.data
@@ -70,7 +68,6 @@ export default async function HomePage() {
     usersToShow = (recentUsers ?? []) as UserRow[]
   }
 
-  // ─── Social feed ──────────────────────────────────────────
   const PAGE_SIZE = 20
   const { data: rawFeed } = await (supabase
     .from("game_logs")
@@ -85,7 +82,6 @@ export default async function HomePage() {
   const feedLogs = hasMore ? allFeedRows.slice(0, PAGE_SIZE) : allFeedRows
   const feedLogIds = feedLogs.filter((l) => l.users && l.games).map((l) => l.id)
 
-  // Like counts, user likes, comment counts in parallel
   const [likeCountsRes, userLikesRes, commentCountsRes, logCountRes, followerCountRes] = await Promise.all([
     (supabase.from("likes").select("log_id").in("log_id", feedLogIds.length > 0 ? feedLogIds : [""]) as any),
     supabase.from("likes").select("log_id").eq("user_id", user.id).in("log_id", feedLogIds.length > 0 ? feedLogIds : [""]),
@@ -132,186 +128,70 @@ export default async function HomePage() {
   const initialCursor = hasMore ? feedLogs[feedLogs.length - 1].created_at : null
   const logCount = logCountRes.count ?? 0
   const followerCount = followerCountRes.count ?? 0
-
-  // ─── Recent reviews (feed entries that have review text) ───
   const recentReviews = feedEntries.filter((e) => e.review_text && e.review_text.trim().length > 0).slice(0, 4)
-
-  // ─── Hero backdrop covers (use popular + trending combined) ─
-  const heroCovers = [...popularGames, ...trendingGames]
-    .filter((g) => g.cover_url)
-    .slice(0, 6)
 
   return (
     <div className="min-h-screen">
-      {/* ─── Hero Backdrop Strip ───────────────────────────── */}
-      <div className="relative overflow-hidden">
-        {/* Game cover backdrop */}
-        <div className="absolute inset-0 flex">
-          {heroCovers.map((game, i) => (
-            <div key={game.id} className="relative flex-1 min-w-0" style={{ opacity: 1 - i * 0.08 }}>
-              {game.cover_url && (
-                <Image
-                  src={game.cover_url.replace("t_cover_big", "t_screenshot_big")}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="20vw"
-                  unoptimized
-                  priority={i < 3}
-                />
-              )}
-            </div>
-          ))}
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/60 via-zinc-950/80 to-zinc-950" />
-          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-transparent to-zinc-950/90" />
-        </div>
-
-        {/* Hero content */}
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-10 pb-8 sm:pt-14 sm:pb-10">
-          <div className="max-w-xl">
-            <h1 className="text-3xl sm:text-4xl font-bold text-zinc-50 tracking-tight leading-tight">
-              Welcome back, {displayName}.
-            </h1>
-            <p className="mt-2 text-base text-zinc-400 leading-relaxed max-w-md">
-              Track games you play. Save those you want to try. Tell your friends what&apos;s good.
-            </p>
-            <div className="mt-5 flex items-center gap-4">
-              <LogGameButton />
-              <div className="flex items-center gap-3 text-sm">
-                <Link href={`/profile/${profile?.username}`} className="text-zinc-500 hover:text-zinc-300 transition-colors">
-                  <span className="font-bold text-zinc-300 font-mono tabular-nums">{logCount}</span> games
-                </Link>
-                <span className="text-zinc-700">/</span>
-                <span className="text-zinc-500">
-                  <span className="font-bold text-zinc-300 font-mono tabular-nums">{followingIds.length}</span> following
-                </span>
-                <span className="text-zinc-700">/</span>
-                <span className="text-zinc-500">
-                  <span className="font-bold text-zinc-300 font-mono tabular-nums">{followerCount}</span> followers
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* ─── Welcome — Letterboxd serif italic ───────────────── */}
+      <div className="mx-auto max-w-[960px] px-4 pt-10 pb-6">
+        <p className="font-serif text-xl text-zinc-300 italic">
+          Welcome back, <span className="font-bold not-italic text-zinc-50">{displayName}</span>.
+          {" "}Here&apos;s what your friends have been playing...
+        </p>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        {/* ─── New From Friends — Film-strip style ─────────── */}
+      <div className="mx-auto max-w-[960px] px-4">
+        {/* ─── New From Community — poster strip ─────────────── */}
         {trendingGames.length > 0 && (
-          <section className="py-6 border-b border-zinc-800/60">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-                New from your community
-              </h2>
-            </div>
-            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+          <section className="pb-8">
+            <SectionHeading title="New from your community" />
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
               {trendingGames.map((game) => (
-                <Link
+                <GameCover
                   key={game.id}
-                  href={`/game/${game.slug}`}
-                  className="group relative flex-shrink-0"
-                >
-                  <div className="relative w-[100px] sm:w-[120px] aspect-[3/4] overflow-hidden rounded-sm bg-zinc-800 ring-1 ring-white/5 transition-all group-hover:ring-indigo-400/60 group-hover:brightness-110">
-                    {game.cover_url ? (
-                      <Image
-                        src={game.cover_url}
-                        alt={game.title}
-                        fill
-                        className="object-cover"
-                        sizes="120px"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center p-2 text-center text-[10px] text-zinc-600">
-                        {game.title}
-                      </div>
-                    )}
-                    {/* Hover overlay with title */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                      <p className="text-[10px] font-medium text-white leading-tight line-clamp-2">
-                        {game.title}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
+                  slug={game.slug}
+                  title={game.title}
+                  coverUrl={game.cover_url}
+                  size="md"
+                  showTitle
+                />
               ))}
             </div>
           </section>
         )}
 
-        {/* ─── Popular This Week ─────────────────────────── */}
+        {/* ─── Popular This Week — grid ──────────────────────── */}
         {popularGames.length > 0 && (
-          <section className="py-6 border-b border-zinc-800/60">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-                Popular this week
-              </h2>
-              <Link
-                href="/search"
-                className="flex items-center gap-1 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-              >
-                More <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1.5 sm:gap-2">
-              {popularGames.slice(0, 10).map((game) => (
-                <Link
+          <section className="pb-8">
+            <SectionHeading title="Popular this week" moreHref="/search" />
+            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-1.5">
+              {popularGames.slice(0, 8).map((game) => (
+                <GameCover
                   key={game.id}
-                  href={`/game/${game.slug}`}
-                  className="group relative"
-                >
-                  <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-zinc-800 ring-1 ring-white/5 transition-all group-hover:ring-indigo-400/60 group-hover:brightness-110">
-                    {game.cover_url ? (
-                      <Image
-                        src={game.cover_url}
-                        alt={game.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 25vw, (max-width: 1024px) 16vw, 10vw"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center p-2 text-center text-[10px] text-zinc-600">
-                        {game.title}
-                      </div>
-                    )}
-                    {/* Rating badge */}
-                    {game.rating != null && (
-                      <div className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 backdrop-blur-sm px-1 py-0.5 text-[9px] font-bold text-yellow-400">
-                        <Star className="h-2 w-2 fill-current" />
-                        {game.rating.toFixed(1)}
-                      </div>
-                    )}
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
-                      <p className="text-[9px] font-medium text-white leading-tight line-clamp-2">
-                        {game.title}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
+                  slug={game.slug}
+                  title={game.title}
+                  coverUrl={game.cover_url}
+                  className="w-full"
+                  showTitle
+                />
               ))}
             </div>
           </section>
         )}
 
-        {/* ─── Recent Reviews ────────────────────────────── */}
+        {/* ─── Popular Reviews — 2-col Letterboxd style ─────── */}
         {recentReviews.length > 0 && (
-          <section className="py-6 border-b border-zinc-800/60">
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
-              Recent reviews
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <section className="pb-8">
+            <SectionHeading title="Recent reviews" />
+            <div className="grid gap-0 sm:grid-cols-2">
               {recentReviews.map((review) => (
                 <div
                   key={review.id}
-                  className="flex gap-3 rounded-lg bg-zinc-900/40 border border-zinc-800/60 p-3 hover:border-zinc-700/60 transition-colors"
+                  className="flex gap-3 py-4 border-b border-zinc-800/50 sm:odd:pr-6 sm:even:pl-6 sm:even:border-l sm:even:border-zinc-800/50"
                 >
-                  {/* Cover */}
                   <Link
                     href={`/game/${review.game_slug}`}
-                    className="relative h-24 w-16 flex-shrink-0 overflow-hidden rounded-sm bg-zinc-800 ring-1 ring-white/5 hover:ring-indigo-400/40 transition-all"
+                    className="relative h-[105px] w-[70px] flex-shrink-0 overflow-hidden rounded-[3px] bg-zinc-800 border border-zinc-700/30 poster-hover"
                   >
                     {review.cover_url && (
                       <Image
@@ -319,53 +199,48 @@ export default async function HomePage() {
                         alt={review.game_title}
                         fill
                         className="object-cover"
-                        sizes="64px"
+                        sizes="70px"
                         unoptimized
                       />
                     )}
                   </Link>
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <Link
-                          href={`/game/${review.game_slug}`}
-                          className="text-sm font-bold text-zinc-100 hover:text-indigo-300 transition-colors leading-tight block truncate"
-                        >
-                          {review.game_title}
-                        </Link>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Link
-                            href={`/profile/${review.username}`}
-                            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-                          >
-                            {review.display_name || review.username}
-                          </Link>
-                          {review.rating != null && review.rating > 0 && (
-                            <div className="flex items-center gap-0.5">
-                              {Array.from({ length: Math.floor(review.rating) }).map((_, i) => (
-                                <Star key={i} className="h-2.5 w-2.5 fill-indigo-400 text-indigo-400" />
-                              ))}
-                              {review.rating % 1 >= 0.5 && (
-                                <Star className="h-2.5 w-2.5 fill-indigo-400/50 text-indigo-400" />
-                              )}
-                            </div>
+                    <Link
+                      href={`/game/${review.game_slug}`}
+                      className="font-serif text-base text-zinc-50 hover:text-hs-blue transition-colors leading-tight block"
+                    >
+                      {review.game_title}
+                    </Link>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Link
+                        href={`/profile/${review.username}`}
+                        className="text-[11px] font-semibold text-zinc-300 hover:text-zinc-50 transition-colors"
+                      >
+                        {review.display_name || review.username}
+                      </Link>
+                      {review.rating != null && review.rating > 0 && (
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: Math.floor(review.rating) }).map((_, i) => (
+                            <Star key={i} className="h-3 w-3 fill-hs-green text-hs-green" />
+                          ))}
+                          {review.rating % 1 >= 0.5 && (
+                            <Star className="h-3 w-3 fill-hs-green/50 text-hs-green" />
                           )}
                         </div>
-                      </div>
+                      )}
                     </div>
-                    <p className="mt-1.5 text-xs text-zinc-500 leading-relaxed line-clamp-2">
+                    <p className="mt-1.5 text-[13px] text-zinc-400 leading-relaxed line-clamp-3 font-serif">
                       {review.review_text}
                     </p>
-                    <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-600">
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-zinc-500">
                       {review.likeCount > 0 && (
-                        <span className="flex items-center gap-0.5">
-                          <Heart className="h-2.5 w-2.5" /> {review.likeCount}
+                        <span className="flex items-center gap-1">
+                          <Heart className="h-3 w-3" /> {review.likeCount} {review.likeCount === 1 ? "like" : "likes"}
                         </span>
                       )}
                       {review.commentCount > 0 && (
-                        <span className="flex items-center gap-0.5">
-                          <MessageSquare className="h-2.5 w-2.5" /> {review.commentCount}
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="h-3 w-3" /> {review.commentCount}
                         </span>
                       )}
                     </div>
@@ -376,20 +251,15 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* ─── Feed + Sidebar ────────────────────────────── */}
-        <div className="flex flex-col lg:flex-row gap-8 py-6">
-          {/* Main feed column */}
+        {/* ─── Feed + Sidebar — Letterboxd two-column ────────── */}
+        <div className="flex flex-col lg:flex-row gap-10 pb-8">
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
-              Friend activity
-            </h2>
+            <SectionHeading title="Friend activity" moreHref="/activity" moreLabel="All activity" />
 
             {feedEntries.length === 0 ? (
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 py-16 text-center">
+              <div className="py-16 text-center">
                 <Gamepad2 className="mx-auto h-10 w-10 text-zinc-700 mb-3" />
-                <h3 className="text-base font-semibold text-zinc-300">
-                  Your feed is empty
-                </h3>
+                <h3 className="text-base font-semibold text-zinc-300">Your feed is empty</h3>
                 <p className="mt-1.5 text-sm text-zinc-500 max-w-xs mx-auto">
                   Follow players or log your first game to see activity here.
                 </p>
@@ -406,90 +276,61 @@ export default async function HomePage() {
             )}
           </div>
 
-          {/* Sidebar */}
-          <aside className="w-full lg:w-64 flex-shrink-0 space-y-5">
-            {/* Players */}
+          {/* Sidebar — 230px like Letterboxd */}
+          <aside className="w-full lg:w-[230px] flex-shrink-0 space-y-6">
+            {profile && (
+              <div>
+                <div className="flex items-center justify-between text-center">
+                  <Link href={`/profile/${profile.username}`} className="group">
+                    <p className="text-lg font-semibold text-zinc-100 group-hover:text-hs-blue transition-colors tabular-nums">{logCount}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Games</p>
+                  </Link>
+                  <div>
+                    <p className="text-lg font-semibold text-zinc-100 tabular-nums">{followingIds.length}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Following</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-zinc-100 tabular-nums">{followerCount}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Followers</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {usersToShow.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <Users className="h-3 w-3" />
-                  Popular members
-                </h3>
-                <div className="space-y-1">
+                <h3 className="section-heading mb-3">Popular members</h3>
+                <div className="space-y-0.5">
                   {usersToShow.slice(0, 6).map((u) => (
                     <Link
                       key={u.id}
                       href={`/profile/${u.username}`}
-                      className="flex items-center gap-2.5 rounded-lg p-2 -mx-2 hover:bg-zinc-800/40 transition-colors"
+                      className="flex items-center gap-2.5 rounded py-1.5 hover:bg-zinc-800/40 transition-colors -mx-1.5 px-1.5"
                     >
-                      <div className="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-zinc-800 ring-1 ring-zinc-700/40">
+                      <div className="relative h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-zinc-800">
                         {u.avatar_url ? (
-                          <Image
-                            src={u.avatar_url}
-                            alt={u.display_name}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
+                          <Image src={u.avatar_url} alt={u.display_name} fill className="object-cover" unoptimized />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <UserIcon className="h-3 w-3 text-zinc-600" />
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-zinc-300 truncate">
-                          {u.display_name}
-                        </p>
-                        <p className="text-[10px] text-zinc-600 truncate">@{u.username}</p>
-                      </div>
+                      <span className="text-[13px] font-medium text-zinc-300 truncate">{u.display_name}</span>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Quick stats */}
-            {profile && (
-              <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <p className="text-lg font-bold text-zinc-200 font-mono tabular-nums">
-                      {logCount}
-                    </p>
-                    <p className="text-[10px] text-zinc-600">Games</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-zinc-200 font-mono tabular-nums">
-                      {followingIds.length}
-                    </p>
-                    <p className="text-[10px] text-zinc-600">Following</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-zinc-200 font-mono tabular-nums">
-                      {followerCount}
-                    </p>
-                    <p className="text-[10px] text-zinc-600">Followers</p>
-                  </div>
-                </div>
-                <Link
-                  href={`/profile/${profile.username}`}
-                  className="mt-3 flex items-center justify-center text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
-                >
-                  View profile <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
-              </div>
-            )}
-
-            {/* Links */}
-            <div className="space-y-1.5 text-xs text-zinc-600 pt-2">
-              <div className="flex items-center gap-3">
+            <div className="space-y-1.5 text-[11px] text-zinc-600 pt-2 border-t border-zinc-800/40">
+              <div className="flex items-center gap-3 pt-3">
                 <Link href="/stats" className="hover:text-zinc-400 transition-colors">Stats</Link>
                 <Link href="/backlog" className="hover:text-zinc-400 transition-colors">Backlog</Link>
                 <Link href="/lists" className="hover:text-zinc-400 transition-colors">Lists</Link>
                 <Link href="/activity" className="hover:text-zinc-400 transition-colors">Activity</Link>
               </div>
-              <p className="text-zinc-700 pt-1">HIGH-SCORE &mdash; Track your games.</p>
+              <p className="text-zinc-700">HIGH-SCORE &mdash; Track your games.</p>
             </div>
           </aside>
         </div>

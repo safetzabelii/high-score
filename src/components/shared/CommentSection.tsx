@@ -122,7 +122,7 @@ export function CommentSection({
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
       >
-        <MessageCircle className={`h-3.5 w-3.5 ${expanded ? "text-indigo-400" : ""}`} />
+        <MessageCircle className={`h-3.5 w-3.5 ${expanded ? "text-hs-green" : ""}`} />
         {count > 0 && <span className="tabular-nums">{count}</span>}
         {expanded ? (
           <ChevronUp className="h-3 w-3 ml-0.5" />
@@ -227,14 +227,14 @@ export function CommentSection({
                 placeholder="Reply..."
                 maxLength={500}
                 rows={2}
-                className="w-full resize-none rounded-md border border-zinc-700/50 bg-zinc-800/30 px-3 py-2 text-[13px] text-zinc-200 placeholder:text-zinc-600 focus:border-indigo-500/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 transition-all"
+                className="w-full resize-none rounded-md border border-zinc-700/50 bg-zinc-800/30 px-3 py-2 text-[13px] text-zinc-200 placeholder:text-zinc-600 focus:border-hs-green/30 focus:outline-none focus:ring-1 focus:ring-hs-green/15 transition-all"
               />
               <div className="flex items-center justify-end gap-2 mt-2">
                 <button
                   type="button"
                   onClick={handleSubmit}
                   disabled={!text.trim() || submitting}
-                  className="rounded-md bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white uppercase tracking-wider hover:bg-indigo-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="rounded-md bg-hs-green-button px-4 py-1.5 text-xs font-bold text-white uppercase tracking-wider hover:bg-hs-green-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -247,7 +247,7 @@ export function CommentSection({
           ) : (
             <div className="border-t border-zinc-800/50 pt-3 text-center">
               <p className="text-xs text-zinc-600">
-                <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-medium">
+                <Link href="/login" className="text-hs-blue hover:text-hs-blue/80 font-medium">
                   Sign in
                 </Link>{" "}
                 to reply.

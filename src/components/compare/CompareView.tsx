@@ -68,7 +68,7 @@ export function CompareView({
                 className={cn(
                   "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-colors border",
                   selectedUsername === f.username
-                    ? "bg-indigo-600/20 text-indigo-400 border-indigo-500/30"
+                    ? "bg-hs-green/20 text-hs-green border-hs-green/30"
                     : "bg-zinc-800/50 text-zinc-400 border-zinc-700/50 hover:text-zinc-200"
                 )}
               >
@@ -103,7 +103,7 @@ export function CompareView({
               <p className="text-lg font-bold text-zinc-100">{comparison.myTotal}</p>
               <p className="text-xs text-zinc-500">Your games</p>
             </div>
-            <div className="rounded-lg border border-indigo-500/30 bg-indigo-950/20 p-3">
+            <div className="rounded-lg border border-hs-green/30 bg-hs-green/10 p-3">
               <p className="text-lg font-bold text-indigo-400">{comparison.commonGames.length}</p>
               <p className="text-xs text-zinc-500">In common</p>
             </div>

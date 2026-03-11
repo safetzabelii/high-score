@@ -11,9 +11,9 @@ interface StarRatingProps {
 }
 
 const sizes = {
-  sm: "h-4 w-4",
-  md: "h-6 w-6",
-  lg: "h-8 w-8",
+  sm: "h-3.5 w-3.5",
+  md: "h-5 w-5",
+  lg: "h-7 w-7",
 }
 
 export function StarRating({
@@ -29,7 +29,6 @@ export function StarRating({
   function handleClick(star: number, half: boolean) {
     if (readonly) return
     const rating = half ? star - 0.5 : star
-    // Click same rating to clear
     if (rating === value) {
       onChange(null)
     } else {
@@ -79,7 +78,7 @@ export function StarRating({
               className={cn("absolute inset-0", sizes[size], "text-zinc-700")}
               filled
             />
-            {/* Filled overlay */}
+            {/* Filled overlay — GREEN like Letterboxd */}
             {(filled || half) && (
               <span
                 className={cn(
@@ -88,7 +87,7 @@ export function StarRating({
                 )}
               >
                 <StarIcon
-                  className={cn(sizes[size], "text-indigo-400")}
+                  className={cn(sizes[size], "text-hs-green")}
                   filled
                 />
               </span>
@@ -97,7 +96,7 @@ export function StarRating({
         )
       })}
 
-      {value !== null && value !== undefined && (
+      {value !== null && value !== undefined && !readonly && (
         <span className="ml-2 text-sm font-medium text-zinc-400 tabular-nums">
           {value.toFixed(1)}
         </span>

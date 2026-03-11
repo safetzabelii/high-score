@@ -64,10 +64,10 @@ export function FollowButton({
       onClick={handleToggle}
       disabled={loading}
       className={cn(
-        "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50",
+        "flex items-center gap-2 rounded-sm px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50",
         following
           ? "border border-zinc-700 text-zinc-300 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10"
-          : "bg-indigo-600 text-white hover:bg-indigo-500"
+          : "bg-hs-green-button text-white hover:bg-hs-green-hover"
       )}
     >
       {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

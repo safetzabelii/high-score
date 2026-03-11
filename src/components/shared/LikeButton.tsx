@@ -12,6 +12,7 @@ interface LikeButtonProps {
   currentUserId: string | null
   initialLiked: boolean
   initialCount: number
+  showLabel?: boolean
 }
 
 export function LikeButton({
@@ -20,6 +21,7 @@ export function LikeButton({
   currentUserId,
   initialLiked,
   initialCount,
+  showLabel = false,
 }: LikeButtonProps) {
   const [liked, setLiked] = useState(initialLiked)
   const [count, setCount] = useState(initialCount)
@@ -28,7 +30,6 @@ export function LikeButton({
   async function toggleLike() {
     if (!currentUserId) return
 
-    // Optimistic update
     const wasLiked = liked
     const prevCount = count
     setLiked(!wasLiked)
@@ -79,12 +80,11 @@ export function LikeButton({
       onClick={toggleLike}
       disabled={!currentUserId || isPending}
       className={cn(
-        "flex items-center gap-1.5 text-xs transition-all rounded-md px-1.5 py-0.5 -mx-1.5",
+        "flex items-center gap-1.5 text-xs transition-all",
         liked
-          ? "text-rose-400 hover:text-rose-300"
-          : "text-zinc-600 hover:text-rose-400",
-        !currentUserId && "cursor-default opacity-50",
-        liked && "hover:bg-rose-500/5"
+          ? "text-hs-orange"
+          : "text-zinc-500 hover:text-hs-orange",
+        !currentUserId && "cursor-default opacity-50"
       )}
       aria-label={liked ? "Unlike" : "Like"}
     >
@@ -94,6 +94,11 @@ export function LikeButton({
           liked && "fill-current scale-110"
         )}
       />
+      {showLabel && (
+        <span className="text-[11px]">
+          {liked ? "Liked" : "Like"}
+        </span>
+      )}
       {count > 0 && (
         <span className="tabular-nums font-medium">{count}</span>
       )}

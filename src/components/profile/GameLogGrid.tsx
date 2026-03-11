@@ -120,7 +120,7 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
               className={cn(
                 "px-3.5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap border-b-2 -mb-px",
                 activeStatus === tab.value
-                  ? "border-indigo-500 text-zinc-100"
+                  ? "border-hs-green text-zinc-100"
                   : "border-transparent text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
               )}
             >
@@ -173,7 +173,7 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
             return (
               <div key={log.id} className="group relative">
                 <Link href={`/game/${game.slug}`}>
-                  <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-zinc-800 ring-1 ring-white/5 transition-all group-hover:ring-indigo-400/50 group-hover:brightness-110">
+                  <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-zinc-800 ring-1 ring-white/5 transition-all group-hover:ring-hs-green/50 group-hover:brightness-110">
                     {game.cover_url ? (
                       <Image
                         src={game.cover_url}
@@ -191,7 +191,7 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
 
                     {/* Rating badge — bottom left on hover */}
                     {log.rating != null && log.rating > 0 && (
-                      <div className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 backdrop-blur-sm px-1 py-0.5 text-[9px] font-bold text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 backdrop-blur-sm px-1 py-0.5 text-[9px] font-bold text-hs-blue opacity-0 group-hover:opacity-100 transition-opacity">
                         <Star className="h-2 w-2 fill-current" />
                         {log.rating.toFixed(1)}
                       </div>

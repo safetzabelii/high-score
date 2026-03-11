@@ -39,66 +39,58 @@ export function ReviewCard({
   const displayName = review.users.display_name || review.users.username
 
   return (
-    <div className="border-b border-zinc-800/40 pb-5 mb-5 last:border-0 last:pb-0 last:mb-0">
-      {/* Header: avatar + name + rating */}
+    <div className="border-b border-zinc-800/50 pb-5 mb-5 last:border-0 last:pb-0 last:mb-0">
+      {/* Header: avatar + "Review by Name" + stars */}
       <div className="flex items-center gap-3 mb-3">
         <Link href={`/profile/${review.users.username}`} className="flex-shrink-0">
-          <div className="relative h-8 w-8 overflow-hidden rounded-full ring-1 ring-zinc-700/40 bg-zinc-800 hover:ring-zinc-600 transition-all">
+          <div className="relative h-10 w-10 overflow-hidden rounded-full bg-zinc-800">
             {review.users.avatar_url ? (
-              <Image
-                src={review.users.avatar_url}
-                alt={displayName}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+              <Image src={review.users.avatar_url} alt={displayName} fill className="object-cover" unoptimized />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
-                <UserIcon className="h-3.5 w-3.5 text-zinc-600" />
+                <UserIcon className="h-4 w-4 text-zinc-600" />
               </div>
             )}
           </div>
         </Link>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[13px] text-zinc-400">Review by</span>
             <Link
               href={`/profile/${review.users.username}`}
-              className="text-sm font-semibold text-zinc-200 hover:text-zinc-50 transition-colors"
+              className="text-[13px] font-bold text-zinc-100 hover:text-hs-blue transition-colors"
             >
               {displayName}
             </Link>
-            <span className="text-[11px] text-zinc-600">@{review.users.username}</span>
-          </div>
-        </div>
-
-        {/* Star rating — inline compact */}
-        {review.rating != null && review.rating > 0 && (
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {Array.from({ length: Math.floor(review.rating) }).map((_, i) => (
-              <Star key={i} className="h-3.5 w-3.5 fill-indigo-400 text-indigo-400" />
-            ))}
-            {review.rating % 1 >= 0.5 && (
-              <Star className="h-3.5 w-3.5 fill-indigo-400/50 text-indigo-400" />
+            {review.rating != null && review.rating > 0 && (
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: Math.floor(review.rating) }).map((_, i) => (
+                  <Star key={i} className="h-3.5 w-3.5 fill-hs-green text-hs-green" />
+                ))}
+                {review.rating % 1 >= 0.5 && (
+                  <Star className="h-3.5 w-3.5 fill-hs-green/50 text-hs-green" />
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Review text */}
+      {/* Review text — serif */}
       {review.review_text && (
         <div className="mb-3">
           <SpoilerGuard containsSpoilers={review.contains_spoilers}>
-            <p className="text-[13px] text-zinc-400 leading-relaxed whitespace-pre-line">
+            <p className="text-[15px] text-zinc-300 leading-relaxed whitespace-pre-line font-serif">
               {review.review_text}
             </p>
           </SpoilerGuard>
         </div>
       )}
 
-      {/* Meta + actions row */}
+      {/* Meta + actions */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[11px] text-zinc-600">
+        <div className="flex items-center gap-2 text-[11px] text-zinc-500">
           <span className="tabular-nums">
             {new Date(review.logged_date).toLocaleDateString("en-US", {
               month: "short",
@@ -120,18 +112,17 @@ export function ReviewCard({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <LikeButton
-            logId={review.id}
-            logOwnerId={review.user_id}
-            currentUserId={currentUserId}
-            initialLiked={initialLiked}
-            initialCount={initialLikeCount}
-          />
-        </div>
+        <LikeButton
+          logId={review.id}
+          logOwnerId={review.user_id}
+          currentUserId={currentUserId}
+          initialLiked={initialLiked}
+          initialCount={initialLikeCount}
+          showLabel
+        />
       </div>
 
-      {/* Comments — full width below the review */}
+      {/* Comments */}
       <div className="mt-3">
         <CommentSection
           logId={review.id}

@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { Globe, Lock, List as ListIcon, ArrowRight } from "lucide-react"
+import { Globe, Lock, List as ListIcon } from "lucide-react"
 import { ProfileHeader } from "@/components/profile/ProfileHeader"
 import { GameLogGrid } from "@/components/profile/GameLogGrid"
+import { SectionHeading } from "@/components/shared/SectionHeading"
 import type { GameStatus, ListRow } from "@/types/database"
 
 interface ProfilePageProps {
@@ -112,7 +113,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   const lists = (rawLists ?? []) as ListRow[]
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-[960px] px-4 py-8">
       <ProfileHeader
         profile={profile}
         stats={stats}
@@ -121,7 +122,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
         currentUserId={currentUser?.id ?? null}
       />
 
-      <section>
+      <section className="mt-8">
         <GameLogGrid
           logs={(logs ?? []) as any}
           activeStatus={(statusFilter as GameStatus) ?? null}
@@ -133,28 +134,17 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
 
       {/* User Lists */}
       {lists.length > 0 && (
-        <section className="mt-8 pt-6 border-t border-zinc-800/60">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-              <ListIcon className="h-3.5 w-3.5" />
-              Lists
-            </h2>
-            <Link
-              href="/lists"
-              className="flex items-center gap-1 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
-            >
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
+        <section className="mt-8">
+          <SectionHeading title="Lists" moreHref="/lists" />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {lists.map((list) => (
               <Link
                 key={list.id}
                 href={`/lists/${list.id}`}
-                className="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4 hover:border-zinc-700/60 transition-colors"
+                className="border-b border-zinc-800/50 pb-3 hover:border-zinc-600/50 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-zinc-200 truncate">{list.title}</span>
+                  <span className="text-[13px] font-semibold text-zinc-200 truncate">{list.title}</span>
                   {list.is_public ? (
                     <Globe className="h-3 w-3 text-zinc-600 flex-shrink-0" />
                   ) : (
@@ -162,7 +152,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                   )}
                 </div>
                 {list.description && (
-                  <p className="text-xs text-zinc-500 truncate">{list.description}</p>
+                  <p className="text-[11px] text-zinc-500 truncate">{list.description}</p>
                 )}
               </Link>
             ))}
