@@ -95,7 +95,7 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
           onDragEnter={(e) => e.preventDefault()}
           className={`flex items-center gap-4 rounded-lg border p-3 transition-colors ${
             overIndex === index && dragIndex !== null && dragIndex !== index
-              ? "border-indigo-500/50 bg-indigo-950/20"
+              ? "border-hs-green/50 bg-hs-green/5"
               : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
           }`}
         >

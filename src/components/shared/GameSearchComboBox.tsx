@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { Search, Loader2, X } from "lucide-react"
 import { useGameSearch, type GameSearchResult } from "@/hooks/useGameSearch"
@@ -15,8 +15,8 @@ export function GameSearchCombobox({
   onSelect,
   placeholder = "Search for a game…",
 }: GameSearchComboboxProps) {
-  const { query, setQuery, results, isLoading, clear } = useGameSearch(350)
-  const inputRef   = useRef<HTMLInputElement>(null)
+  const { query, setQuery, results, isLoading, isLoadingMore, hasMore, loadMore, clear } = useGameSearch(350)
+  const inputRef    = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown on outside click
@@ -33,6 +33,16 @@ export function GameSearchCombobox({
     document.addEventListener("mousedown", handleClick)
     return () => document.removeEventListener("mousedown", handleClick)
   }, [clear])
+
+  // Infinite scroll: load more when near bottom of dropdown
+  const handleScroll = useCallback(() => {
+    const el = dropdownRef.current
+    if (!el || !hasMore || isLoadingMore) return
+    const { scrollTop, scrollHeight, clientHeight } = el
+    if (scrollTop + clientHeight >= scrollHeight - 40) {
+      loadMore()
+    }
+  }, [hasMore, isLoadingMore, loadMore])
 
   function handleSelect(game: GameSearchResult) {
     clear()
@@ -55,7 +65,7 @@ export function GameSearchCombobox({
           className={cn(
             "w-full rounded-lg border border-zinc-700 bg-zinc-900",
             "pl-9 pr-9 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500",
-            "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+            "focus:outline-none focus:ring-2 focus:ring-hs-green/30 focus:border-hs-green/50",
             "transition-colors"
           )}
           autoComplete="off"
@@ -76,6 +86,7 @@ export function GameSearchCombobox({
       {showDropdown && (
         <div
           ref={dropdownRef}
+          onScroll={handleScroll}
           className={cn(
             "absolute top-full left-0 right-0 z-50 mt-1.5",
             "rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl shadow-black/50",
@@ -138,13 +149,21 @@ export function GameSearchCombobox({
 
                     {/* Rating badge */}
                     {game.rating && (
-                      <span className="flex-shrink-0 rounded bg-zinc-800 px-1.5 py-0.5 text-xs font-medium text-indigo-400">
+                      <span className="flex-shrink-0 rounded bg-zinc-800 px-1.5 py-0.5 text-xs font-medium text-hs-green">
                         {game.rating.toFixed(1)}
                       </span>
                     )}
                   </button>
                 </li>
               ))}
+
+              {/* Load more spinner */}
+              {isLoadingMore && (
+                <li className="flex items-center justify-center gap-2 py-3 text-xs text-zinc-500">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading more…
+                </li>
+              )}
             </ul>
           )}
         </div>

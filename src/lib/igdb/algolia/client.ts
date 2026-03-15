@@ -19,6 +19,7 @@ export interface AlgoliaGame {
   platforms:    string[]
   developer:    string | null
   rating:       number | null
+  rating_count: number
 }
 
 export function toAlgoliaRecord(game: ShapedGame): AlgoliaGame {
@@ -33,6 +34,7 @@ export function toAlgoliaRecord(game: ShapedGame): AlgoliaGame {
     platforms:    game.platforms,
     developer:    game.developer,
     rating:       game.rating,
+    rating_count: game.rating_count,
   }
 }
 
@@ -68,10 +70,31 @@ export async function syncGameToAlgolia(game: ShapedGame): Promise<void> {
   }
 }
 
+// ── Configure index settings (idempotent) ─────────────────────
+let settingsConfigured = false
+async function ensureIndexSettings(): Promise<void> {
+  if (settingsConfigured) return
+  try {
+    const client = getAdminClient()
+    await client.setSettings({
+      indexName: INDEX_NAME,
+      indexSettings: {
+        searchableAttributes: ['title'],
+        customRanking: ['desc(rating_count)'],
+        attributesForFaceting: ['genres', 'platforms'],
+      },
+    })
+    settingsConfigured = true
+  } catch (err) {
+    console.error('[Algolia] setSettings failed:', err)
+  }
+}
+
 // ── Bulk sync ─────────────────────────────────────────────────
 export async function syncGamesToAlgolia(games: ShapedGame[]): Promise<void> {
   try {
     const client  = getAdminClient()
+    await ensureIndexSettings()
     const objects = games.map(toAlgoliaRecord)
     await client.saveObjects({
       indexName: INDEX_NAME,

@@ -44,7 +44,7 @@ export function StatsCharts({
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-center">
-          <Gamepad2 className="h-5 w-5 mx-auto mb-1 text-indigo-400" />
+          <Gamepad2 className="h-5 w-5 mx-auto mb-1 text-hs-green" />
           <p className="text-2xl font-bold text-zinc-100 tabular-nums">{totalGames}</p>
           <p className="text-xs text-zinc-500">Games Logged</p>
         </div>
@@ -77,7 +77,7 @@ export function StatsCharts({
             <div key={rating} className="flex-1 flex flex-col items-center gap-1">
               <div className="w-full flex flex-col justify-end h-24">
                 <div
-                  className="w-full rounded-t bg-indigo-500/80 transition-all min-h-[2px]"
+                  className="w-full rounded-t bg-hs-green/80 transition-all min-h-[2px]"
                   style={{ height: `${(count / maxRating) * 100}%` }}
                 />
               </div>

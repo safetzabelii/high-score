@@ -21,7 +21,7 @@ export function GamePageActions({ game, existingLog }: GamePageActionsProps) {
         className={
           existingLog
             ? "inline-flex items-center gap-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 px-5 py-2.5 text-sm font-medium transition-all"
-            : "inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/30 px-5 py-2.5 text-sm font-medium transition-all"
+            : "inline-flex items-center gap-2 rounded-sm bg-hs-green-button hover:bg-hs-green-hover text-white shadow-lg shadow-black/30 px-5 py-2.5 text-sm font-medium transition-all"
         }
       >
         {existingLog ? (

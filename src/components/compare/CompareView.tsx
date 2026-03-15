@@ -104,7 +104,7 @@ export function CompareView({
               <p className="text-xs text-zinc-500">Your games</p>
             </div>
             <div className="rounded-lg border border-hs-green/30 bg-hs-green/10 p-3">
-              <p className="text-lg font-bold text-indigo-400">{comparison.commonGames.length}</p>
+              <p className="text-lg font-bold text-hs-green">{comparison.commonGames.length}</p>
               <p className="text-xs text-zinc-500">In common</p>
             </div>
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">

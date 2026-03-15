@@ -44,7 +44,7 @@ export default async function HomePage() {
   const feedUserIds = [...followingIds, user.id]
 
   const popularGames = popularRaw.map(shapeGame)
-  syncGamesToAlgolia(popularGames).catch(() => {})
+  syncGamesToAlgolia(popularGames).catch(() => { })
 
   const seenIds = new Set<number>()
   const trendingGames: GameRow[] = []
@@ -187,7 +187,7 @@ export default async function HomePage() {
               {recentReviews.map((review) => (
                 <div
                   key={review.id}
-                  className="flex gap-3 py-4 border-b border-zinc-800/50 sm:odd:pr-6 sm:even:pl-6 sm:even:border-l sm:even:border-zinc-800/50"
+                  className="flex gap-3 py-4 border-b border-zinc-700 sm:odd:pr-6 sm:even:pl-6 sm:even:border-l sm:even:border-zinc-700"
                 >
                   <Link
                     href={`/game/${review.game_slug}`}
@@ -323,7 +323,7 @@ export default async function HomePage() {
               </div>
             )}
 
-            <div className="space-y-1.5 text-[11px] text-zinc-600 pt-2 border-t border-zinc-800/40">
+            <div className="space-y-1.5 text-[11px] text-zinc-300 pt-2 border-t border-zinc-700">
               <div className="flex items-center gap-3 pt-3">
                 <Link href="/stats" className="hover:text-zinc-400 transition-colors">Stats</Link>
                 <Link href="/backlog" className="hover:text-zinc-400 transition-colors">Backlog</Link>

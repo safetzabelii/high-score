@@ -87,6 +87,7 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
 
     setEditGame({
       id: log.games.id,
+      igdb_id: log.games.id,   // games table PK === IGDB ID
       title: log.games.title,
       slug: log.games.slug,
       cover_url: log.games.cover_url,

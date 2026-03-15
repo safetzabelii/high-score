@@ -66,7 +66,7 @@ export function CreateListForm() {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Top 10 RPGs"
           maxLength={100}
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-hs-green/30 focus:border-transparent transition-colors"
           autoFocus
         />
       </div>
@@ -83,7 +83,7 @@ export function CreateListForm() {
           rows={3}
           maxLength={500}
           placeholder="What's this list about?"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors resize-none"
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-hs-green/30 focus:border-transparent transition-colors resize-none"
         />
       </div>
 
@@ -95,9 +95,9 @@ export function CreateListForm() {
             type="button"
             onClick={() => setIsPublic(true)}
             className={cn(
-              "flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium transition-colors",
               isPublic
-                ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
+                ? "border-hs-green bg-hs-green/10 text-hs-green"
                 : "border-zinc-700 text-zinc-500 hover:border-zinc-600"
             )}
           >
@@ -108,9 +108,9 @@ export function CreateListForm() {
             type="button"
             onClick={() => setIsPublic(false)}
             className={cn(
-              "flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium transition-colors",
               !isPublic
-                ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
+                ? "border-hs-green bg-hs-green/10 text-hs-green"
                 : "border-zinc-700 text-zinc-500 hover:border-zinc-600"
             )}
           >
@@ -125,8 +125,8 @@ export function CreateListForm() {
         type="submit"
         disabled={saving}
         className={cn(
-          "inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all",
-          "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/30",
+          "inline-flex items-center gap-2 rounded-sm px-5 py-2.5 text-sm font-medium transition-all",
+          "bg-hs-green-button hover:bg-hs-green-hover text-white shadow-lg shadow-black/30",
           saving && "opacity-70 cursor-not-allowed"
         )}
       >

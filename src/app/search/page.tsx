@@ -45,7 +45,7 @@ export default function SearchPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={tab === "games" ? "Search for games..." : "Search for users..."}
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-900 pl-12 pr-10 py-3 text-base text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+          className="w-full rounded-xl border border-zinc-700 bg-zinc-900 pl-12 pr-10 py-3 text-base text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-hs-green/30 focus:border-transparent transition-colors"
           autoComplete="off"
           autoFocus
         />
@@ -70,7 +70,7 @@ export default function SearchPage() {
             className={cn(
               "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors capitalize",
               tab === t
-                ? "border-indigo-500 bg-indigo-500/10 text-indigo-300"
+                ? "border-hs-green bg-hs-green/10 text-hs-green"
                 : "border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
             )}
           >
@@ -164,7 +164,7 @@ function GameCard({ game }: { game: GameSearchResult }) {
               {game.release_year && <span>{game.release_year}</span>}
               {game.rating != null && (
                 <span className="flex items-center gap-0.5">
-                  <Star className="h-3 w-3 fill-indigo-400 text-indigo-400" />
+                  <Star className="h-3 w-3 fill-hs-green text-hs-green" />
                   {game.rating.toFixed(1)}
                 </span>
               )}

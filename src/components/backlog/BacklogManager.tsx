@@ -80,7 +80,7 @@ export function BacklogManager({ initialLogs }: BacklogManagerProps) {
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
               sortKey === btn.key
-                ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+                ? "bg-hs-green/20 text-hs-green border border-hs-green/30"
                 : "bg-zinc-800/50 text-zinc-400 border border-zinc-700/50 hover:text-zinc-200"
             )}
           >

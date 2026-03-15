@@ -81,13 +81,13 @@ export default async function NotificationsPage() {
               ? "bg-rose-500/10 text-rose-400"
               : isComment
               ? "bg-amber-500/10 text-amber-400"
-              : "bg-indigo-500/10 text-indigo-400"
+              : "bg-hs-green/10 text-hs-green"
 
             return (
               <div
                 key={notif.id}
                 className={`flex items-start gap-3 rounded-lg p-3 transition-colors ${
-                  !notif.read ? "bg-indigo-500/5 border border-indigo-500/20" : "hover:bg-zinc-900/50"
+                  !notif.read ? "bg-hs-green/5 border border-hs-green/20" : "hover:bg-zinc-900/50"
                 }`}
               >
                 {/* Icon */}
@@ -131,7 +131,7 @@ export default async function NotificationsPage() {
                             {" "}for{" "}
                             <Link
                               href={`/game/${game.slug}`}
-                              className="font-medium text-indigo-400 hover:text-indigo-300"
+                              className="font-medium text-hs-green hover:text-hs-green"
                             >
                               {game.title}
                             </Link>
@@ -146,7 +146,7 @@ export default async function NotificationsPage() {
                             {" "}for{" "}
                             <Link
                               href={`/game/${game.slug}`}
-                              className="font-medium text-indigo-400 hover:text-indigo-300"
+                              className="font-medium text-hs-green hover:text-hs-green"
                             >
                               {game.title}
                             </Link>

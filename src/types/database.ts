@@ -118,8 +118,8 @@ export interface FeedEntry {
 export type InsertGameLog = Omit<GameLogRow, 'id' | 'created_at'>
 export type UpdateGameLog = Partial<Omit<GameLogRow, 'id' | 'user_id' | 'game_id' | 'created_at'>>
 
-export type InsertGame    = Omit<GameRow, 'created_at'>
-export type UpdateUser    = Partial<Pick<UserRow, 'display_name' | 'avatar_url' | 'bio'>>
+export type InsertGame = Omit<GameRow, 'created_at'>
+export type UpdateUser = Partial<Pick<UserRow, 'display_name' | 'avatar_url' | 'bio'>>
 
 
 export interface Database {

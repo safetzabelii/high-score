@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { LogGameButton } from "@/components/shared/LogGameButton";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { MorphLogo } from "@/components/MorphLogo";
 import { cn } from "@/lib/utils";
 
 export default function Navbar() {
@@ -37,11 +38,11 @@ export default function Navbar() {
         setUser(session.user);
         setUsername(session.user.user_metadata?.username || "Gamer");
         // Fetch avatar
-        const { data: profile } = await supabase
+        const { data: profile } = await (supabase
           .from("users")
           .select("avatar_url")
           .eq("id", session.user.id)
-          .single();
+          .single() as any);
         if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
       }
       setLoading(false);
@@ -73,26 +74,18 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { href: "/search", label: "GAMES" },
+    { href: "/discover", label: "GAMES" },
     { href: "/lists", label: "LISTS" },
     { href: "/search?tab=users", label: "MEMBERS" },
   ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-800/60">
+    <nav className="sticky top-0 z-50 w-full bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-700">
       <div className="mx-auto flex h-[72px] max-w-[960px] items-center justify-between px-4">
         {/* Left: Logo + Nav Links */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            {/* Three colored dots — Letterboxd-style branding */}
-            <div className="flex items-center gap-1">
-              <span className="h-2.5 w-2.5 rounded-full bg-hs-orange" />
-              <span className="h-2.5 w-2.5 rounded-full bg-hs-green" />
-              <span className="h-2.5 w-2.5 rounded-full bg-hs-blue" />
-            </div>
-            <span className="font-mono font-bold tracking-tight text-[15px] text-zinc-50 hidden sm:block">
-              HIGH-SCORE
-            </span>
+          <Link href="/" className="flex items-center gap-2.5 group mr-4">
+            <MorphLogo />
           </Link>
 
           {/* Nav links — desktop only */}
