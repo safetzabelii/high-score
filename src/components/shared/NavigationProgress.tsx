@@ -5,8 +5,10 @@ import { usePathname, useSearchParams } from "next/navigation"
 
 /**
  * Thin progress bar at the very top of the viewport.
- * Uses refs + direct DOM manipulation to avoid React setState
- * issues with history.pushState monkey-patching in React 19.
+ * Uses refs + direct DOM manipulation to avoid React 19 issues.
+ *
+ * Includes a safety timeout: if the bar has been running for more
+ * than 8 seconds without a route change, it auto-finishes.
  */
 function NavigationProgressInner() {
   const pathname = usePathname()
@@ -14,7 +16,9 @@ function NavigationProgressInner() {
   const barRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const safetyRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const progressRef = useRef(0)
+  const activeRef = useRef(false)
   const prevUrlRef = useRef(pathname + searchParams.toString())
 
   const setBar = useCallback((percent: number, visible: boolean) => {
@@ -29,8 +33,27 @@ function NavigationProgressInner() {
     }
   }, [])
 
-  const startProgress = useCallback(() => {
+  const finishProgress = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
+    if (safetyRef.current) clearTimeout(safetyRef.current)
+    timerRef.current = null
+    safetyRef.current = null
+    activeRef.current = false
+
+    setBar(100, true)
+
+    setTimeout(() => {
+      setBar(0, false)
+    }, 250)
+  }, [setBar])
+
+  const startProgress = useCallback(() => {
+    // Don't stack multiple progress bars
+    if (activeRef.current) return
+    activeRef.current = true
+
+    if (timerRef.current) clearInterval(timerRef.current)
+    if (safetyRef.current) clearTimeout(safetyRef.current)
 
     setBar(15, true)
 
@@ -43,19 +66,14 @@ function NavigationProgressInner() {
       const increment = Math.max(1, (90 - prev) * 0.08)
       setBar(Math.min(prev + increment, 90), true)
     }, 100)
-  }, [setBar])
 
-  const finishProgress = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
+    // Safety timeout: auto-finish after 8 seconds if route change never came
+    safetyRef.current = setTimeout(() => {
+      finishProgress()
+    }, 8000)
+  }, [setBar, finishProgress])
 
-    setBar(100, true)
-
-    setTimeout(() => {
-      setBar(0, false)
-    }, 250)
-  }, [setBar])
-
-  // ─── Detect route changes (covers router.push, back/forward, etc.) ───
+  // ─── Detect route changes ────────────────────────────────────────────
   useEffect(() => {
     const currentUrl = pathname + searchParams.toString()
     if (prevUrlRef.current !== currentUrl) {
@@ -71,8 +89,17 @@ function NavigationProgressInner() {
       if (!anchor) return
 
       const href = anchor.getAttribute("href")
-      if (!href || href.startsWith("#") || href.startsWith("http") || href.startsWith("mailto:")) return
-      if (href === pathname) return
+      if (!href) return
+      // Skip external, hash, and mailto links
+      if (href.startsWith("http") || href.startsWith("#") || href.startsWith("mailto:")) return
+
+      // Skip same-page links (compare just the pathname portion)
+      try {
+        const targetPath = new URL(href, window.location.origin).pathname
+        if (targetPath === pathname) return
+      } catch {
+        if (href === pathname) return
+      }
 
       startProgress()
     }
@@ -83,10 +110,7 @@ function NavigationProgressInner() {
 
   // ─── Detect form submissions (sign in / sign up) ────────────────────
   useEffect(() => {
-    const handleSubmit = () => {
-      startProgress()
-    }
-
+    const handleSubmit = () => startProgress()
     document.addEventListener("submit", handleSubmit, true)
     return () => document.removeEventListener("submit", handleSubmit, true)
   }, [startProgress])
@@ -97,25 +121,25 @@ function NavigationProgressInner() {
     return () => window.removeEventListener("beforeunload", startProgress)
   }, [startProgress])
 
-  // ─── Detect programmatic navigation ──────────────────────────────────
-  // Uses requestAnimationFrame to defer the bar update out of the
-  // synchronous history.pushState call, avoiding React 19's
-  // "useInsertionEffect must not schedule updates" error.
+  // ─── Detect programmatic pushState (router.push) ─────────────────────
+  // Only patch pushState, NOT replaceState — Next.js calls replaceState
+  // constantly for internal state updates which was causing false triggers.
   useEffect(() => {
     const originalPushState = history.pushState.bind(history)
-    const originalReplaceState = history.replaceState.bind(history)
 
     history.pushState = function (...args) {
-      requestAnimationFrame(() => startProgress())
-      return originalPushState(...args)
-    }
-
-    history.replaceState = function (...args) {
       const newUrl = args[2]
-      if (newUrl && typeof newUrl === "string" && newUrl !== window.location.pathname) {
-        requestAnimationFrame(() => startProgress())
+      if (newUrl && typeof newUrl === "string") {
+        try {
+          const targetPath = new URL(newUrl, window.location.origin).pathname
+          if (targetPath !== window.location.pathname) {
+            requestAnimationFrame(() => startProgress())
+          }
+        } catch {
+          requestAnimationFrame(() => startProgress())
+        }
       }
-      return originalReplaceState(...args)
+      return originalPushState(...args)
     }
 
     const handlePopState = () => startProgress()
@@ -123,7 +147,6 @@ function NavigationProgressInner() {
 
     return () => {
       history.pushState = originalPushState
-      history.replaceState = originalReplaceState
       window.removeEventListener("popstate", handlePopState)
     }
   }, [startProgress])

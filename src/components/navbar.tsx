@@ -31,8 +31,7 @@ export default function Navbar() {
   const [username, setUsername] = useState<string>("Gamer");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  // Track whether we're in the middle of an auth transition
-  // (signed in but still on /login, or signed out but still on /)
+  // Auth transition state — only used on login/signup pages
   const [authTransitioning, setAuthTransitioning] = useState(false);
   const pendingUserRef = useRef<User | null | undefined>(undefined);
   const pendingUsernameRef = useRef<string>("Gamer");
@@ -40,68 +39,75 @@ export default function Navbar() {
 
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
 
-  // When pathname changes, apply any pending auth state
+  // When pathname changes away from auth page, apply pending state
   useEffect(() => {
-    if (authTransitioning && pendingUserRef.current !== undefined) {
+    if (authTransitioning && pendingUserRef.current !== undefined && !isAuthPage) {
       setUser(pendingUserRef.current);
       setUsername(pendingUsernameRef.current);
       setAvatarUrl(pendingAvatarRef.current);
       pendingUserRef.current = undefined;
       setAuthTransitioning(false);
     }
-  }, [pathname, authTransitioning]);
+  }, [pathname, authTransitioning, isAuthPage]);
+
+  // Helper: fetch avatar without blocking
+  const fetchAvatar = async (userId: string) => {
+    const { data: profile } = await (supabase
+      .from("users")
+      .select("avatar_url")
+      .eq("id", userId)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .single() as any);
+    if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
+    return profile?.avatar_url ?? null;
+  };
 
   useEffect(() => {
     const initialize = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // Show the user immediately — no waiting for avatar
         setUser(session.user);
         setUsername(session.user.user_metadata?.username || "Gamer");
-        // Fetch avatar
-        const { data: profile } = await (supabase
-          .from("users")
-          .select("avatar_url")
-          .eq("id", session.user.id)
-          .single() as any);
-        if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
+        setLoading(false);
+        // Fetch avatar in background
+        fetchAvatar(session.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip INITIAL_SESSION — already handled by initialize() above
+      if (event === "INITIAL_SESSION") return;
+
       if (session) {
         const newUsername = session.user.user_metadata?.username || "Gamer";
+        const onAuthPage = window.location.pathname.startsWith("/login") || window.location.pathname.startsWith("/signup");
 
-        // Fetch avatar
-        const { data: profile } = await (supabase
-          .from("users")
-          .select("avatar_url")
-          .eq("id", session.user.id)
-          .single() as any);
-        const newAvatar = profile?.avatar_url ?? null;
-
-        if (event === "SIGNED_IN") {
-          // User just signed in — defer the navbar update until we leave the login page
-          // This keeps the navbar in sync with the page content
+        if (event === "SIGNED_IN" && onAuthPage) {
+          // Fetch avatar first, then defer until navigation
+          const avatar = await fetchAvatar(session.user.id);
           pendingUserRef.current = session.user;
           pendingUsernameRef.current = newUsername;
-          pendingAvatarRef.current = newAvatar;
+          pendingAvatarRef.current = avatar;
           setAuthTransitioning(true);
 
-          // Trigger navigation to home
           router.refresh();
           router.push("/");
         } else {
-          // TOKEN_REFRESHED or other events — apply immediately
+          // TOKEN_REFRESHED or SIGNED_IN on non-auth page — apply immediately
           setUser(session.user);
           setUsername(newUsername);
-          setAvatarUrl(newAvatar);
+          // Avatar fetch in background (don't block)
+          fetchAvatar(session.user.id);
         }
       } else {
-        if (event === "SIGNED_OUT") {
-          // Defer clearing until we've navigated to /login
+        const onAuthPage = window.location.pathname.startsWith("/login") || window.location.pathname.startsWith("/signup");
+
+        if (event === "SIGNED_OUT" && !onAuthPage) {
           pendingUserRef.current = null;
           pendingUsernameRef.current = "Gamer";
           pendingAvatarRef.current = null;
@@ -133,7 +139,6 @@ export default function Navbar() {
     { href: "/search?tab=users", label: "MEMBERS" },
   ];
 
-  // During auth transition, show the loading spinner
   const showLoading = loading || authTransitioning;
 
   return (

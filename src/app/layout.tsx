@@ -5,6 +5,7 @@ import Navbar from '../components/navbar'
 import { NavigationProgress } from '@/components/shared/NavigationProgress'
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar'
 import './globals.css'
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({
   subsets: ['latin'],
