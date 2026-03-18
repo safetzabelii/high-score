@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono, DM_Serif_Display } from 'next/font/google'
 import { Toaster } from 'sonner'
 import Navbar from '../components/navbar'
+import { NavigationProgress } from '@/components/shared/NavigationProgress'
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar'
 import './globals.css'
 
@@ -41,6 +42,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
       </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} ${dmSerif.variable} font-sans bg-zinc-950 text-zinc-100 antialiased`}>
+        <NavigationProgress />
         <Navbar />
         <main className="min-h-[calc(100vh-4.5rem)]">{children}</main>
         <Toaster

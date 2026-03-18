@@ -7,7 +7,7 @@ import { LogGameButton } from "@/components/shared/LogGameButton"
 import { InfiniteFeed } from "@/components/feed/InfiniteFeed"
 import { SectionHeading } from "@/components/shared/SectionHeading"
 import { GameCover } from "@/components/shared/GameCover"
-import { getPopularGames, shapeGame } from "@/lib/igdb/fetch"
+import { getPopularGames, shapeGame, warmGameCache } from "@/lib/igdb/fetch"
 import { syncGamesToAlgolia } from "@/lib/igdb/algolia/client"
 import type { UserRow, GameLogRow, GameRow } from "@/types/database"
 
@@ -44,7 +44,13 @@ export default async function HomePage() {
   const feedUserIds = [...followingIds, user.id]
 
   const popularGames = popularRaw.map(shapeGame)
-  syncGamesToAlgolia(popularGames).catch(() => { })
+
+  // Fire-and-forget: warm the game cache + Algolia in parallel
+  // These don't block the page render
+  Promise.all([
+    warmGameCache(popularGames).catch(() => {}),
+    syncGamesToAlgolia(popularGames).catch(() => {}),
+  ])
 
   const seenIds = new Set<number>()
   const trendingGames: GameRow[] = []

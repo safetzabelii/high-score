@@ -5,12 +5,13 @@ import type { Metadata } from "next"
 import { Gamepad2, Star, Eye, Heart, List as ListIcon, MessageSquare } from "lucide-react"
 import { ShareButton } from "@/components/shared/ShareButton"
 import { SectionHeading } from "@/components/shared/SectionHeading"
-import { getGameBySlug, shapeGame, coverUrl } from "@/lib/igdb/fetch"
+import { getCachedGameBySlug, coverUrl } from "@/lib/igdb/fetch"
 import { syncGameToAlgolia } from "@/lib/igdb/algolia/client"
 import { createClient } from "@/lib/supabase/server"
 import { GamePageActions } from "@/components/game/GamePageActions"
 import { ReviewCard } from "@/components/game/ReviewCard"
 import type { UserRow, GameLogRow } from "@/types/database"
+
 
 interface GamePageProps {
   params: Promise<{ slug: string }>
@@ -18,10 +19,10 @@ interface GamePageProps {
 
 export async function generateMetadata({ params }: GamePageProps): Promise<Metadata> {
   const { slug } = await params
-  const raw = await getGameBySlug(slug)
-  if (!raw) return { title: "Game not found — HIGH-SCORE" }
-  const game = shapeGame(raw)
-  const description = raw.summary?.slice(0, 160) ?? `${game.title} on HIGH-SCORE`
+  // Use the cached version — this is often already warm from the page load
+  const game = await getCachedGameBySlug(slug)
+  if (!game) return { title: "Game not found — HIGH-SCORE" }
+  const description = game.summary?.slice(0, 160) ?? `${game.title} on HIGH-SCORE`
   const ogImage = game.cover_url ?? undefined
 
   return {
@@ -44,38 +45,41 @@ export async function generateMetadata({ params }: GamePageProps): Promise<Metad
 
 export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params
-  const raw = await getGameBySlug(slug)
-  if (!raw) notFound()
 
-  const game = shapeGame(raw)
-  const publisher =
-    raw.involved_companies?.find((c) => c.publisher)?.company.name ?? null
+  // ── Fetch game data from cache (Supabase) or IGDB as fallback ──
+  const game = await getCachedGameBySlug(slug)
+  if (!game) notFound()
 
   const supabase = await createClient()
-  await (supabase.from("games") as any).upsert(
-    {
-      id: game.id,
-      title: game.title,
-      slug: game.slug,
-      cover_url: game.cover_url,
-      release_year: game.release_year,
-    },
-    { onConflict: "id" }
-  )
 
-  syncGameToAlgolia(game).catch(() => {})
+  // ── Fire-and-forget: sync to games table + Algolia ─────────────
+  // These don't block the page render
+  Promise.all([
+    (supabase.from("games") as any).upsert(
+      {
+        id: game.id,
+        title: game.title,
+        slug: game.slug,
+        cover_url: game.cover_url,
+        release_year: game.release_year,
+      },
+      { onConflict: "id" }
+    ),
+    syncGameToAlgolia(game).catch(() => {}),
+  ])
 
-  const {
-    data: { user: currentUser },
-  } = await supabase.auth.getUser()
+  // ── Parallel data fetches from Supabase ────────────────────────
+  const [authRes, logsRes] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("game_logs")
+      .select("*, users(*)")
+      .eq("game_id", game.id)
+      .order("created_at", { ascending: false }) as any,
+  ])
 
-  const { data: allLogs } = await (supabase
-    .from("game_logs")
-    .select("*, users(*)")
-    .eq("game_id", game.id)
-    .order("created_at", { ascending: false }) as any)
-
-  const logs = (allLogs ?? []) as (GameLogRow & { users: UserRow })[]
+  const currentUser = authRes.data.user
+  const logs = (logsRes.data ?? []) as (GameLogRow & { users: UserRow })[]
 
   const ratingsOnly = logs.filter((l) => l.rating != null && l.rating > 0)
   const avgRating =
@@ -92,34 +96,36 @@ export default async function GamePage({ params }: GamePageProps) {
 
   const reviewIds = reviews.map((r) => r.id)
 
-  const { data: likeCounts } = await (supabase
-    .from("likes")
-    .select("log_id")
-    .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any)
+  // ── Parallel: likes, user likes, comment counts ────────────────
+  const [likeCountsRes, userLikesRes, commentCountsRes] = await Promise.all([
+    supabase
+      .from("likes")
+      .select("log_id")
+      .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any,
+    currentUser
+      ? supabase
+          .from("likes")
+          .select("log_id")
+          .eq("user_id", currentUser.id)
+          .in("log_id", reviewIds.length > 0 ? reviewIds : [""])
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from("comments")
+      .select("log_id")
+      .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any,
+  ])
 
   const likeCountMap = new Map<string, number>()
-  for (const like of (likeCounts ?? []) as { log_id: string }[]) {
+  for (const like of (likeCountsRes.data ?? []) as { log_id: string }[]) {
     likeCountMap.set(like.log_id, (likeCountMap.get(like.log_id) ?? 0) + 1)
   }
 
-  let likedSet = new Set<string>()
-  if (currentUser) {
-    const { data: userLikes } = await supabase
-      .from("likes")
-      .select("log_id")
-      .eq("user_id", currentUser.id)
-      .in("log_id", reviewIds.length > 0 ? reviewIds : [""])
-
-    likedSet = new Set((userLikes ?? []).map((l) => l.log_id))
-  }
-
-  const { data: commentCounts } = await (supabase
-    .from("comments")
-    .select("log_id")
-    .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any)
+  const likedSet = new Set(
+    ((userLikesRes.data ?? []) as { log_id: string }[]).map((l) => l.log_id)
+  )
 
   const commentCountMap = new Map<string, number>()
-  for (const c of (commentCounts ?? []) as { log_id: string }[]) {
+  for (const c of (commentCountsRes.data ?? []) as { log_id: string }[]) {
     commentCountMap.set(c.log_id, (commentCountMap.get(c.log_id) ?? 0) + 1)
   }
 
@@ -127,11 +133,14 @@ export default async function GamePage({ params }: GamePageProps) {
     ? logs.find((l) => l.user_id === currentUser.id) ?? null
     : null
 
-  const screenshot = raw.screenshots?.[0]?.url || raw.artworks?.[0]?.url
+  // ── Hero image from cached screenshots/artworks ────────────────
+  const screenshot = game.screenshots?.[0] || game.artworks?.[0]
   const heroUrl = screenshot
-    ? "https:" + screenshot.replace(/t_[a-z0-9_]+/, "t_screenshot_big")
+    ? screenshot.replace(/t_[a-z0-9_]+/, "t_screenshot_big")
     : null
-  const highResCover = coverUrl(raw.cover?.url, "720p")
+  const highResCover = game.cover_url
+    ? game.cover_url.replace(/t_[a-z0-9_]+/, "t_720p")
+    : null
 
   const existingLogForModal = currentUserLog
     ? {
@@ -298,10 +307,10 @@ export default async function GamePage({ params }: GamePageProps) {
                   <span>Developed by <span className="font-semibold text-zinc-200">{game.developer}</span></span>
                 </>
               )}
-              {publisher && publisher !== game.developer && (
+              {game.publisher && game.publisher !== game.developer && (
                 <>
                   <span className="text-zinc-600">&middot;</span>
-                  <span>{publisher}</span>
+                  <span>{game.publisher}</span>
                 </>
               )}
             </div>

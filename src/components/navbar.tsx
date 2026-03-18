@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { LogOut, User as UserIcon, Loader2, Search, Settings, List, Clock, BarChart3, Gamepad2, Heart, Layers } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
@@ -31,6 +31,26 @@ export default function Navbar() {
   const [username, setUsername] = useState<string>("Gamer");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  // Track whether we're in the middle of an auth transition
+  // (signed in but still on /login, or signed out but still on /)
+  const [authTransitioning, setAuthTransitioning] = useState(false);
+  const pendingUserRef = useRef<User | null | undefined>(undefined);
+  const pendingUsernameRef = useRef<string>("Gamer");
+  const pendingAvatarRef = useRef<string | null>(null);
+
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
+
+  // When pathname changes, apply any pending auth state
+  useEffect(() => {
+    if (authTransitioning && pendingUserRef.current !== undefined) {
+      setUser(pendingUserRef.current);
+      setUsername(pendingUsernameRef.current);
+      setAvatarUrl(pendingAvatarRef.current);
+      pendingUserRef.current = undefined;
+      setAuthTransitioning(false);
+    }
+  }, [pathname, authTransitioning]);
+
   useEffect(() => {
     const initialize = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -50,26 +70,60 @@ export default function Navbar() {
 
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        setUsername(session.user.user_metadata?.username || "Gamer");
+        const newUsername = session.user.user_metadata?.username || "Gamer";
+
+        // Fetch avatar
+        const { data: profile } = await (supabase
+          .from("users")
+          .select("avatar_url")
+          .eq("id", session.user.id)
+          .single() as any);
+        const newAvatar = profile?.avatar_url ?? null;
+
+        if (event === "SIGNED_IN") {
+          // User just signed in — defer the navbar update until we leave the login page
+          // This keeps the navbar in sync with the page content
+          pendingUserRef.current = session.user;
+          pendingUsernameRef.current = newUsername;
+          pendingAvatarRef.current = newAvatar;
+          setAuthTransitioning(true);
+
+          // Trigger navigation to home
+          router.refresh();
+          router.push("/");
+        } else {
+          // TOKEN_REFRESHED or other events — apply immediately
+          setUser(session.user);
+          setUsername(newUsername);
+          setAvatarUrl(newAvatar);
+        }
       } else {
-        setUsername("Gamer");
-        setAvatarUrl(null);
+        if (event === "SIGNED_OUT") {
+          // Defer clearing until we've navigated to /login
+          pendingUserRef.current = null;
+          pendingUsernameRef.current = "Gamer";
+          pendingAvatarRef.current = null;
+          setAuthTransitioning(true);
+        } else {
+          setUser(null);
+          setUsername("Gamer");
+          setAvatarUrl(null);
+        }
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (!error) {
       toast.success("Signed out.");
       router.refresh();
-      router.push("/login")
+      router.push("/login");
     }
   };
 
@@ -78,6 +132,9 @@ export default function Navbar() {
     { href: "/lists", label: "LISTS" },
     { href: "/search?tab=users", label: "MEMBERS" },
   ];
+
+  // During auth transition, show the loading spinner
+  const showLoading = loading || authTransitioning;
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-700">
@@ -109,7 +166,7 @@ export default function Navbar() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          {loading ? (
+          {showLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />
           ) : user ? (
             <>

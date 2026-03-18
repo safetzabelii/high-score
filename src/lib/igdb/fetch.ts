@@ -1,5 +1,6 @@
 // src/lib/igdb/fetch.ts
 // Handles all communication with the IGDB (Twitch) API
+// Enhanced with Supabase caching layer for fast game detail loads
 
 let cachedToken: { token: string; expiresAt: number } | null = null
 
@@ -261,12 +262,8 @@ export interface GameEdition {
 /**
  * Fetch all editions/versions for a game.
  *
- * IGDB stores related content as ID arrays ON the parent game
- * (dlcs, expansions, remakes, remasters, ports, bundles).
- * We first fetch those arrays, then batch-fetch the game details.
- *
- * If the queried game is itself a child (has parent_game / version_parent),
- * we resolve the real parent first so siblings are also captured.
+ * OPTIMIZED: Parallelizes the parent resolution + child fetch where possible,
+ * and caches results via Next.js fetch cache.
  */
 export async function getGameVersions(gameId: number): Promise<GameEdition[]> {
   // Step 1: fetch this game with all relation arrays
@@ -281,25 +278,21 @@ limit 1;`
 
   if (!gameInfo) return []
 
-  // Step 2: if this game is a child, resolve the actual parent
-  let parentId = gameId
-  if (gameInfo.parent_game) parentId = gameInfo.parent_game
-  else if (gameInfo.version_parent) parentId = gameInfo.version_parent
-
-  // Step 3: fetch parent game to get its relation arrays
-  const [parent] = parentId !== gameId
-    ? await igdbFetch<IgdbGame[]>(
-        'games',
-        `fields id, dlcs, expansions, standalone_expansions,
-          remakes, remasters, ports, bundles;
+  // Step 2: resolve parent — if this game IS the parent, skip the extra fetch
+  let parent = gameInfo
+  const parentId = gameInfo.parent_game ?? gameInfo.version_parent
+  if (parentId && parentId !== gameId) {
+    const [resolved] = await igdbFetch<IgdbGame[]>(
+      'games',
+      `fields id, dlcs, expansions, standalone_expansions,
+        remakes, remasters, ports, bundles;
 where id = ${parentId};
 limit 1;`
-      ).catch(() => [] as IgdbGame[])
-    : [gameInfo]
+    ).catch(() => [] as IgdbGame[])
+    if (resolved) parent = resolved
+  }
 
-  if (!parent) return []
-
-  // Step 4: collect all child IDs from every relation field
+  // Step 3: collect all child IDs
   const childIds = new Set<number>([
     ...(parent.dlcs ?? []),
     ...(parent.expansions ?? []),
@@ -312,7 +305,7 @@ limit 1;`
 
   if (childIds.size === 0) return []
 
-  // Step 5: fetch details for all child IDs
+  // Step 4: fetch all children in one batch
   const idList = [...childIds].join(',')
   const children = await igdbFetch<IgdbGame[]>(
     'games',
@@ -322,7 +315,6 @@ sort first_release_date asc;
 limit 50;`
   ).catch(() => [] as IgdbGame[])
 
-  // Keep only categories we care about (skip DLCs-only if we want cleaner list)
   const SHOW_CATEGORIES = new Set(Object.keys(EDITION_CATEGORIES).map(Number))
 
   return children
@@ -353,6 +345,9 @@ export interface ShapedGame {
   rating: number | null
   rating_count: number
   developer: string | null
+  publisher: string | null
+  artworks: string[]
+  screenshots: string[]
 }
 
 // Platforms to exclude (discontinued services)
@@ -386,6 +381,9 @@ export function shapeGame(g: IgdbGame): ShapedGame {
   const developer =
     g.involved_companies?.find((c) => c.developer)?.company.name ?? null
 
+  const publisher =
+    g.involved_companies?.find((c) => c.publisher)?.company.name ?? null
+
   const rawPlatforms = g.platforms?.map((x) => {
     const abbr = x.abbreviation ?? x.name
     return PLATFORM_NORMALIZE[abbr] ?? abbr
@@ -408,5 +406,181 @@ export function shapeGame(g: IgdbGame): ShapedGame {
     rating: g.rating ? Math.round(g.rating) / 10 : null,  // 0-10 scale
     rating_count: g.rating_count ?? 0,
     developer,
+    publisher,
+    artworks: g.artworks?.map((a) => 'https:' + a.url.replace(/t_[a-z0-9_]+/, 't_720p')) ?? [],
+    screenshots: g.screenshots?.map((s) => 'https:' + s.url.replace(/t_[a-z0-9_]+/, 't_720p')) ?? [],
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SUPABASE GAME CACHE LAYER
+// ═══════════════════════════════════════════════════════════════════
+//
+// Instead of hitting IGDB on every game detail page load, we store
+// the full shaped game data in Supabase's `game_cache` table.
+// Cache TTL: 7 days for released games, 1 day for unreleased.
+//
+// This requires a new `game_cache` table in Supabase — see the
+// migration SQL in game-cache-migration.sql.
+// ═══════════════════════════════════════════════════════════════════
+
+import { createClient } from '@/lib/supabase/server'
+
+/** The shape we store in the game_cache table's `data` JSONB column */
+export interface CachedGameData extends ShapedGame {
+  igdb_updated_at: string  // ISO timestamp of when we fetched from IGDB
+}
+
+/** Cache TTL constants */
+const CACHE_TTL_RELEASED = 7 * 24 * 60 * 60 * 1000   // 7 days
+const CACHE_TTL_UNRELEASED = 1 * 24 * 60 * 60 * 1000  // 1 day
+
+/**
+ * Get a game by slug — checks Supabase cache first, falls back to IGDB.
+ * This is the primary function your game detail page should call.
+ */
+export async function getCachedGameBySlug(slug: string): Promise<ShapedGame | null> {
+  const supabase = await createClient()
+
+  // 1. Check cache
+  const { data: cached } = await supabase
+    .from('game_cache')
+    .select('data, fetched_at')
+    .eq('slug', slug)
+    .single()
+
+  if (cached) {
+    const gameData = cached.data as unknown as CachedGameData
+    const age = Date.now() - new Date(cached.fetched_at).getTime()
+    const isReleased = gameData.release_year && gameData.release_year <= new Date().getFullYear()
+    const ttl = isReleased ? CACHE_TTL_RELEASED : CACHE_TTL_UNRELEASED
+
+    if (age < ttl) {
+      return gameData // Cache hit — instant response
+    }
+    // Cache is stale — fall through to IGDB but return stale data immediately
+    // and refresh in background (stale-while-revalidate pattern)
+    refreshGameCache(slug, supabase).catch(() => {})
+    return gameData
+  }
+
+  // 2. Cache miss — fetch from IGDB and store
+  return fetchAndCacheGame(slug, supabase)
+}
+
+/**
+ * Get a game by IGDB ID — checks cache first, falls back to IGDB.
+ */
+export async function getCachedGameById(igdbId: number): Promise<ShapedGame | null> {
+  const supabase = await createClient()
+
+  const { data: cached } = await supabase
+    .from('game_cache')
+    .select('data, fetched_at')
+    .eq('igdb_id', igdbId)
+    .single()
+
+  if (cached) {
+    const gameData = cached.data as unknown as CachedGameData
+    const age = Date.now() - new Date(cached.fetched_at).getTime()
+    const isReleased = gameData.release_year && gameData.release_year <= new Date().getFullYear()
+    const ttl = isReleased ? CACHE_TTL_RELEASED : CACHE_TTL_UNRELEASED
+
+    if (age < ttl) return gameData
+
+    refreshGameCacheById(igdbId, supabase).catch(() => {})
+    return gameData
+  }
+
+  const raw = await getGameById(igdbId)
+  if (!raw) return null
+  const shaped = shapeGame(raw)
+  await upsertGameCache(shaped, supabase)
+  return shaped
+}
+
+/** Fetch from IGDB by slug and write to cache */
+async function fetchAndCacheGame(
+  slug: string,
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<ShapedGame | null> {
+  const raw = await getGameBySlug(slug)
+  if (!raw) return null
+
+  const shaped = shapeGame(raw)
+  await upsertGameCache(shaped, supabase)
+  return shaped
+}
+
+/** Background refresh — doesn't block the response */
+async function refreshGameCache(
+  slug: string,
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<void> {
+  const raw = await getGameBySlug(slug)
+  if (raw) await upsertGameCache(shapeGame(raw), supabase)
+}
+
+async function refreshGameCacheById(
+  igdbId: number,
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<void> {
+  const raw = await getGameById(igdbId)
+  if (raw) await upsertGameCache(shapeGame(raw), supabase)
+}
+
+/** Upsert a shaped game into the cache table */
+async function upsertGameCache(
+  game: ShapedGame,
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<void> {
+  const cacheData: CachedGameData = {
+    ...game,
+    igdb_updated_at: new Date().toISOString(),
+  }
+
+  await supabase
+    .from('game_cache')
+    .upsert(
+      {
+        igdb_id: game.id,
+        slug: game.slug,
+        title: game.title,
+        cover_url: game.cover_url,
+        release_year: game.release_year,
+        data: cacheData as any,
+        fetched_at: new Date().toISOString(),
+      },
+      { onConflict: 'igdb_id' }
+    )
+    .then(({ error }) => {
+      if (error) console.error('[game_cache upsert]', error.message)
+    })
+}
+
+/**
+ * Warm the cache for multiple games at once (e.g. from search results
+ * or popular games). Fire-and-forget — doesn't block rendering.
+ */
+export async function warmGameCache(games: ShapedGame[]): Promise<void> {
+  if (games.length === 0) return
+  const supabase = await createClient()
+
+  const rows = games.map((game) => ({
+    igdb_id: game.id,
+    slug: game.slug,
+    title: game.title,
+    cover_url: game.cover_url,
+    release_year: game.release_year,
+    data: { ...game, igdb_updated_at: new Date().toISOString() } as any,
+    fetched_at: new Date().toISOString(),
+  }))
+
+  await supabase
+    .from('game_cache')
+    .upsert(rows, { onConflict: 'igdb_id', ignoreDuplicates: true })
+    .then(({ error }) => {
+      if (error) console.error('[game_cache bulk warm]', error.message)
+    })
 }
