@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { Sparkles, Gamepad2, Star } from "lucide-react"
+import { Sparkles, Gamepad2, Heart } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { igdbFetch, type IgdbGame, shapeGame, coverUrl } from "@/lib/igdb/fetch"
 import type { GameLogRow, GameRow } from "@/types/database"
@@ -174,7 +174,7 @@ limit 24;`
                 )}
                 {game.rating != null && (
                   <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded bg-zinc-950/80 px-1.5 py-0.5 text-[10px] font-bold text-yellow-400">
-                    <Star className="h-2.5 w-2.5 fill-yellow-400" />
+                    <Heart className="h-2.5 w-2.5 fill-[#ff0055] text-[#ff0055]" />
                     {game.rating.toFixed(1)}
                   </div>
                 )}

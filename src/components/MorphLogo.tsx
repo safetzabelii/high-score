@@ -195,7 +195,7 @@ export function MorphLogo({ className }: { className?: string }) {
                 p.el.style.transform = `translate(${baseTarget.rx + nx}px, ${baseTarget.ry + ny}px) scaleX(${scaleX})`;
 
                 const rColor = Math.random();
-                p.el.style.backgroundColor = rColor > 0.8 ? '#00f0ff' : (rColor > 0.4 ? '#ffffff' : '#ff0055');
+                p.el.style.backgroundColor = rColor > 0.8 ? '#ff0055' : (rColor > 0.4 ? '#ffffff' : '#ff0055');
                 p.el.style.opacity = Math.random() > 0.2 ? '1' : '0.2';
                 p.el.style.boxShadow = 'none';
             }

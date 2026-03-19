@@ -13,6 +13,7 @@ interface ProfileHeaderProps {
     followers: number
     following: number
   }
+  ratingDist: Record<string, number>
   isOwn: boolean
   isFollowing: boolean
   currentUserId: string | null
@@ -21,10 +22,16 @@ interface ProfileHeaderProps {
 export function ProfileHeader({
   profile,
   stats,
+  ratingDist,
   isOwn,
   isFollowing,
   currentUserId,
 }: ProfileHeaderProps) {
+  const distEntries = Object.entries(ratingDist).sort(
+    (a, b) => parseFloat(a[0]) - parseFloat(b[0])
+  )
+  const maxDist = Math.max(...distEntries.map(([, c]) => c), 1)
+  const totalRated = distEntries.reduce((s, [, c]) => s + c, 0)
   return (
     <div className="mb-6">
       <div className="flex flex-col sm:flex-row items-start gap-5">
@@ -69,24 +76,54 @@ export function ProfileHeader({
           </div>
 
           {profile.bio && (
-            <p className="mt-2 text-[13px] text-zinc-400 max-w-lg leading-relaxed font-serif">{profile.bio}</p>
+            <p className="mt-2 text-[13px] text-zinc-400 max-w-lg leading-relaxed">{profile.bio}</p>
           )}
+
         </div>
 
-        {/* Stats — Letterboxd right-aligned numbers */}
-        <div className="flex items-center gap-6 flex-shrink-0">
-          <div className="text-center">
-            <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.gamesLogged}</p>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Games</p>
+        {/* Stats + Ratings chart — right-aligned */}
+        <div className="flex items-start gap-6 flex-shrink-0">
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.gamesLogged}</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Games</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.following}</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Following</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.followers}</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Followers</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.following}</p>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Following</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.followers}</p>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Followers</p>
-          </div>
+
+          {/* Rating distribution — compact sidebar chart */}
+          {totalRated > 0 && (
+            <div className="border-l border-zinc-800 pl-5">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Ratings</span>
+                <span className="text-[10px] text-zinc-600 tabular-nums">{totalRated}</span>
+              </div>
+              <div className="flex items-end gap-[2px] h-10 w-40">
+                {distEntries.map(([rating, count]) => (
+                  <div key={rating} className="flex-1 flex items-end h-full">
+                    <div
+                      className="w-full bg-zinc-600 hover:bg-[#ff0055] transition-colors"
+                      style={{
+                        height: count > 0 ? `${Math.max((count / maxDist) * 100, 8)}%` : "1px",
+                        opacity: count > 0 ? 1 : 0.15,
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-0.5">
+                <span className="text-[7px] text-zinc-600">★</span>
+                <span className="text-[7px] text-zinc-600">★★★★★</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

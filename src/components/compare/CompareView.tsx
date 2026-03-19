@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { User as UserIcon, Gamepad2, Star } from "lucide-react"
+import { User as UserIcon, Gamepad2, Heart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface CompareViewProps {
@@ -163,7 +163,7 @@ export function CompareView({
                       <div className="flex items-center justify-center gap-1">
                         {game.myRating != null && game.myRating > 0 ? (
                           <>
-                            <Star className="h-3 w-3 text-yellow-500" />
+                            <Heart className="h-3 w-3 fill-[#ff0055] text-[#ff0055]" />
                             <span className="text-sm font-medium text-zinc-200 tabular-nums">
                               {game.myRating}
                             </span>
@@ -176,7 +176,7 @@ export function CompareView({
                       <div className="flex items-center justify-center gap-1">
                         {game.theirRating != null && game.theirRating > 0 ? (
                           <>
-                            <Star className="h-3 w-3 text-yellow-500" />
+                            <Heart className="h-3 w-3 fill-[#ff0055] text-[#ff0055]" />
                             <span
                               className={cn(
                                 "text-sm font-medium tabular-nums",

@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Gamepad2, Star, User as UserIcon, MessageSquare, Heart } from "lucide-react"
+import { Gamepad2, User as UserIcon, MessageSquare, Heart } from "lucide-react"
+import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { LogGameButton } from "@/components/shared/LogGameButton"
 import { InfiniteFeed } from "@/components/feed/InfiniteFeed"
 import { SectionHeading } from "@/components/shared/SectionHeading"
@@ -226,17 +227,10 @@ export default async function HomePage() {
                         {review.display_name || review.username}
                       </Link>
                       {review.rating != null && review.rating > 0 && (
-                        <div className="flex items-center gap-0.5">
-                          {Array.from({ length: Math.floor(review.rating) }).map((_, i) => (
-                            <Star key={i} className="h-3 w-3 fill-hs-green text-hs-green" />
-                          ))}
-                          {review.rating % 1 >= 0.5 && (
-                            <Star className="h-3 w-3 fill-hs-green/50 text-hs-green" />
-                          )}
-                        </div>
+                        <HeartRatingDisplay rating={review.rating} />
                       )}
                     </div>
-                    <p className="mt-1.5 text-[13px] text-zinc-400 leading-relaxed line-clamp-3 font-serif">
+                    <p className="mt-1.5 text-[13px] text-zinc-400 leading-relaxed line-clamp-3">
                       {review.review_text}
                     </p>
                     <div className="flex items-center gap-3 mt-2 text-[11px] text-zinc-500">

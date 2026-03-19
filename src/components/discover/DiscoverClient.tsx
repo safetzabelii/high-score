@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Search, X, Loader2, Star, Gamepad2, ArrowRight } from "lucide-react"
+import { Search, X, Loader2, Heart, Gamepad2, ArrowRight } from "lucide-react"
 import { GameCover } from "@/components/shared/GameCover"
 import { SectionHeading } from "@/components/shared/SectionHeading"
 import { useGameSearch, type GameSearchResult } from "@/hooks/useGameSearch"
@@ -181,7 +181,7 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
                       <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded text-xs font-bold text-white shadow-lg pointer-events-none border border-white/10 flex items-center gap-1.5">
                         {game.rating && (
                           <span className="text-yellow-400 flex items-center gap-0.5">
-                            <Star className="w-3 h-3 fill-yellow-400" />
+                            <Heart className="w-3 h-3 fill-[#ff0055] text-[#ff0055]" />
                             {game.rating.toFixed(1)}
                           </span>
                         )}
@@ -596,7 +596,7 @@ function GameCard({ game }: { game: GameSearchResult }) {
               {game.release_year && <span>{game.release_year}</span>}
               {game.rating != null && (
                 <span className="flex items-center gap-0.5">
-                  <Star className="h-3 w-3 fill-hs-green text-hs-green" />
+                  <Heart className="h-3 w-3 fill-[#ff0055] text-[#ff0055]" />
                   {game.rating.toFixed(1)}
                 </span>
               )}

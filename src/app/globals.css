@@ -28,7 +28,7 @@
     --accent-green: #ff0055; /* Replaced with red */
     --accent-green-button: #e6004c;
     --accent-green-hover: #cc0044;
-    --accent-blue: #00f0ff; /* Replaced with cyan */
+    --accent-blue: #ff0055; /* Brand pink — no more cyan */
     --accent-orange: #ff0055;
 
     /* ShadCN overrides */
@@ -88,7 +88,9 @@
   --color-hs-blue: var(--accent-blue);
   --color-hs-orange: var(--accent-orange);
 
+  --font-family-sans: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
   --font-family-serif: "DM Serif Display", Georgia, serif;
+  --font-family-mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
 }
 
 @layer utilities {

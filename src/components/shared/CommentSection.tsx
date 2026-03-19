@@ -25,6 +25,8 @@ interface CommentSectionProps {
   logOwnerId: string
   currentUserId: string | null
   initialCount: number
+  /** When true, skip the toggle button and render content directly */
+  forceExpanded?: boolean
 }
 
 function timeAgo(dateStr: string): string {
@@ -44,8 +46,9 @@ export function CommentSection({
   logOwnerId,
   currentUserId,
   initialCount,
+  forceExpanded = false,
 }: CommentSectionProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(forceExpanded)
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(false)
   const [text, setText] = useState("")
@@ -115,25 +118,27 @@ export function CommentSection({
   }
 
   return (
-    <div className="w-full">
-      {/* Toggle button */}
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-      >
-        <MessageCircle className={`h-3.5 w-3.5 ${expanded ? "text-hs-green" : ""}`} />
-        {count > 0 && <span className="tabular-nums">{count}</span>}
-        {expanded ? (
-          <ChevronUp className="h-3 w-3 ml-0.5" />
-        ) : count > 0 ? (
-          <ChevronDown className="h-3 w-3 ml-0.5" />
-        ) : null}
-      </button>
+    <div>
+      {/* Toggle button — hidden when parent controls expansion */}
+      {!forceExpanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          <MessageCircle className={`h-3.5 w-3.5 ${expanded ? "text-hs-green" : ""}`} />
+          {count > 0 && <span className="tabular-nums">{count}</span>}
+          {expanded ? (
+            <ChevronUp className="h-3 w-3 ml-0.5" />
+          ) : count > 0 ? (
+            <ChevronDown className="h-3 w-3 ml-0.5" />
+          ) : null}
+        </button>
+      )}
 
-      {/* Expanded — Letterboxd-style comment list */}
+      {/* Expanded — comment list */}
       {expanded && (
-        <div className="mt-3">
+        <div className={forceExpanded ? "" : "mt-3"}>
           {loading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />

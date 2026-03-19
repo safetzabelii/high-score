@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronLeft, Loader2, Star } from "lucide-react"
+import { ChevronLeft, Loader2, Heart } from "lucide-react"
 import { BaseGame } from "@/components/discover/DiscoverClient"
 
 const categoryTitles: Record<string, string> = {
@@ -135,7 +135,7 @@ function GameCard({ game }: { game: BaseGame }) {
               {game.release_year && <span>{game.release_year}</span>}
               {game.rating != null && (
                 <span className="flex items-center gap-0.5">
-                  <Star className="h-3 w-3 fill-hs-green text-hs-green" />
+                  <Heart className="h-3 w-3 fill-[#ff0055] text-[#ff0055]" />
                   {game.rating.toFixed(1)}
                 </span>
               )}

@@ -36,7 +36,6 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
     setDragIndex(index)
     dragNode.current = e.currentTarget
     e.dataTransfer.effectAllowed = "move"
-    // Make the drag image slightly transparent
     requestAnimationFrame(() => {
       if (dragNode.current) dragNode.current.style.opacity = "0.4"
     })
@@ -51,7 +50,6 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
       newItems.splice(overIndex, 0, moved)
       setItems(newItems)
 
-      // Persist new order
       setSaving(true)
       try {
         await fetch("/api/lists/reorder", {
@@ -63,7 +61,6 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
           }),
         })
       } catch {
-        // Revert on error
         setItems(items)
       } finally {
         setSaving(false)
@@ -81,77 +78,78 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
   }
 
   return (
-    <div className="space-y-2">
+    <div>
       {saving && (
-        <div className="text-xs text-zinc-500 mb-1">Saving order...</div>
+        <div className="text-xs text-zinc-500 mb-2">Saving order...</div>
       )}
-      {items.map((item, index) => (
-        <div
-          key={item.id}
-          draggable={isOwner}
-          onDragStart={(e) => handleDragStart(index, e)}
-          onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(index, e)}
-          onDragEnter={(e) => e.preventDefault()}
-          className={`flex items-center gap-4 rounded-lg border p-3 transition-colors ${
-            overIndex === index && dragIndex !== null && dragIndex !== index
-              ? "border-hs-green/50 bg-hs-green/5"
-              : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
-          }`}
-        >
-          {/* Drag handle */}
-          {isOwner && (
-            <GripVertical className="h-4 w-4 flex-shrink-0 cursor-grab text-zinc-600 active:cursor-grabbing" />
-          )}
-
-          {/* Position number */}
-          <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-400">
-            {index + 1}
-          </span>
-
-          {/* Game cover */}
-          <Link
-            href={`/game/${item.games.slug}`}
-            className="relative h-14 w-10 flex-shrink-0 overflow-hidden rounded bg-zinc-800"
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            draggable={isOwner}
+            onDragStart={(e) => handleDragStart(index, e)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(index, e)}
+            onDragEnter={(e) => e.preventDefault()}
+            className={`group relative rounded-lg overflow-hidden border transition-all ${
+              isOwner ? "cursor-grab active:cursor-grabbing" : ""
+            } ${
+              overIndex === index && dragIndex !== null && dragIndex !== index
+                ? "border-[#ff0055]/50 ring-1 ring-[#ff0055]/30 scale-[1.02]"
+                : "border-zinc-800/60 hover:border-zinc-700"
+            }`}
           >
-            {item.games.cover_url ? (
-              <Image
-                src={item.games.cover_url}
-                alt={item.games.title}
-                fill
-                className="object-cover"
-                sizes="40px"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-[8px] text-zinc-600">
-                {item.games.title}
+            {/* Cover image */}
+            <Link href={`/game/${item.games.slug}`} className="block">
+              <div className="relative aspect-[3/4] bg-zinc-900">
+                {item.games.cover_url ? (
+                  <Image
+                    src={item.games.cover_url}
+                    alt={item.games.title}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-zinc-600 p-2 text-center">
+                    {item.games.title}
+                  </div>
+                )}
+
+                {/* Dark gradient overlay at bottom */}
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
+
+                {/* Title overlay */}
+                <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2.5">
+                  <p className="text-xs font-semibold text-zinc-100 truncate transition-colors">
+                    {item.games.title}
+                  </p>
+                  {item.games.release_year && (
+                    <p className="text-[10px] text-zinc-400 mt-0.5">{item.games.release_year}</p>
+                  )}
+                </div>
+
+                {/* Rank badge */}
+                <div className="absolute top-2 left-2 bg-zinc-950/80 backdrop-blur-sm w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold text-zinc-200 border border-zinc-700/50">
+                  {index + 1}
+                </div>
               </div>
-            )}
-          </Link>
-
-          {/* Game info */}
-          <div className="min-w-0 flex-1">
-            <Link
-              href={`/game/${item.games.slug}`}
-              className="text-sm font-medium text-zinc-200 hover:text-zinc-50 transition-colors"
-            >
-              {item.games.title}
             </Link>
-            <div className="flex items-center gap-2 text-xs text-zinc-600">
-              {item.games.release_year && <span>{item.games.release_year}</span>}
-              {item.note && (
-                <>
-                  <span>·</span>
-                  <span className="text-zinc-500 truncate">{item.note}</span>
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* Remove button (owner only) */}
-          {isOwner && <RemoveListItem itemId={item.id} />}
-        </div>
-      ))}
+            {/* Owner controls overlay */}
+            {isOwner && (
+              <>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <RemoveListItem itemId={item.id} />
+                </div>
+                <div className="absolute bottom-[calc(100%-28px)] right-2 opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
+                  <GripVertical className="h-4 w-4 text-zinc-300" />
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

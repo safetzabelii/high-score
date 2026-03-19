@@ -5,9 +5,8 @@ import type { Metadata } from "next"
 import { Globe, Lock, Gamepad2, User as UserIcon } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { AddGameToList } from "@/components/lists/AddGameToList"
-import { RemoveListItem } from "@/components/lists/RemoveListItem"
 import { SortableListItems } from "@/components/lists/SortableListItems"
-import { ListCoverStack } from "@/components/lists/ListCoverStack"
+import { GameCover } from "@/components/shared/GameCover"
 import type { ListRow, ListItemRow, UserRow, GameRow } from "@/types/database"
 
 interface ListPageProps {
@@ -29,16 +28,8 @@ export async function generateMetadata({ params }: ListPageProps): Promise<Metad
   return {
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      type: "website",
-    },
-    twitter: {
-      card: "summary",
-      title,
-      description,
-    },
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary", title, description },
   }
 }
 
@@ -50,7 +41,6 @@ export default async function ListDetailPage({ params }: ListPageProps) {
     data: { user: currentUser },
   } = await supabase.auth.getUser()
 
-  // Fetch list with owner info
   const { data: list } = await (supabase
     .from("lists")
     .select("*, users(*)")
@@ -60,12 +50,9 @@ export default async function ListDetailPage({ params }: ListPageProps) {
   if (!list) notFound()
 
   const typedList = list as ListRow & { users: UserRow }
-
-  // Check access: private lists only visible to owner
   const isOwner = currentUser?.id === typedList.user_id
   if (!typedList.is_public && !isOwner) notFound()
 
-  // Fetch list items with game data
   const { data: rawItems } = await (supabase
     .from("list_items")
     .select("*, games(*)")
@@ -77,75 +64,52 @@ export default async function ListDetailPage({ params }: ListPageProps) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      {/* Premium Header Layout */}
-      <div className="mb-10 flex flex-col sm:flex-row gap-6 sm:gap-8 border-b border-zinc-800/60 pb-8">
-        {/* Large Stacked Covers */}
-        <div className="w-[140px] h-[196px] sm:w-[180px] sm:h-[252px] shrink-0 mx-auto sm:mx-0">
-          <ListCoverStack 
-            covers={items.map((i) => i.games.cover_url)} 
-            totalItems={items.length} 
-            maxCovers={5} 
-          />
-        </div>
-
-        {/* Text Info */}
-        <div className="flex flex-col justify-end pt-4 sm:pt-0">
-          <div className="flex items-center gap-3 mb-2 justify-center sm:justify-start">
-            {typedList.is_public ? (
-              <Globe className="h-4 w-4 text-zinc-500 shrink-0" />
-            ) : (
-              <Lock className="h-4 w-4 text-zinc-500 shrink-0" />
-            )}
-            <h1 className="text-3xl sm:text-4xl font-black text-zinc-50 tracking-tight text-center sm:text-left leading-tight">
-              {typedList.title}
-            </h1>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-sm font-semibold text-zinc-400">
-            <Link
-              href={`/profile/${typedList.users.username}`}
-              className="flex items-center gap-2 hover:text-zinc-200 transition-colors bg-zinc-800/50 py-1.5 px-3 rounded-full border border-zinc-700/50"
-            >
-              <div className="relative h-6 w-6 overflow-hidden rounded-full border border-zinc-700 bg-zinc-800">
-                {typedList.users.avatar_url ? (
-                  <Image
-                    src={typedList.users.avatar_url}
-                    alt={typedList.users.display_name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <UserIcon className="h-3 w-3 text-zinc-600" />
-                  </div>
-                )}
-              </div>
-              <span className="text-zinc-200 tracking-wide uppercase text-xs">{typedList.users.display_name}</span>
-            </Link>
-            
-            <span className="hidden sm:inline text-zinc-600">|</span>
-            
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-zinc-400">
-              <span className="tracking-wide uppercase text-xs font-bold text-zinc-500">Total Games</span>
-              <span className="text-hs-blue">{items.length}</span>
-            </div>
-            
-            <span className="hidden sm:inline text-zinc-600">|</span>
-
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-zinc-400">
-              <span className="tracking-wide uppercase text-xs font-bold text-zinc-500">Updated</span>
-              <span>{new Date(typedList.updated_at).toLocaleDateString()}</span>
-            </div>
-          </div>
-
-          {typedList.description && (
-            <div className="mt-6 bg-zinc-900/40 p-4 rounded-lg border border-zinc-800/60 max-w-2xl text-center sm:text-left">
-              <p className="text-sm text-zinc-300 leading-relaxed max-w-prose">
-                {typedList.description}
-              </p>
-            </div>
+      {/* ── Header ── */}
+      <div className="mb-8 pb-6 border-b border-zinc-800/60">
+        <div className="flex items-start gap-3 mb-2">
+          {typedList.is_public ? (
+            <Globe className="h-4 w-4 text-zinc-600 mt-1.5 shrink-0" />
+          ) : (
+            <Lock className="h-4 w-4 text-zinc-600 mt-1.5 shrink-0" />
           )}
+          <h1 className="text-2xl sm:text-3xl font-black text-zinc-50 tracking-tight leading-tight">
+            {typedList.title}
+          </h1>
         </div>
+
+        <div className="flex items-center gap-3 mt-3 text-[12px] text-zinc-500">
+          <Link
+            href={`/profile/${typedList.users.username}`}
+            className="flex items-center gap-2 hover:text-zinc-200 transition-colors"
+          >
+            <div className="relative h-5 w-5 overflow-hidden rounded-full bg-zinc-800">
+              {typedList.users.avatar_url ? (
+                <Image
+                  src={typedList.users.avatar_url}
+                  alt={typedList.users.display_name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <UserIcon className="h-2.5 w-2.5 text-zinc-600" />
+                </div>
+              )}
+            </div>
+            <span className="font-semibold text-zinc-300">{typedList.users.display_name}</span>
+          </Link>
+          <span className="text-zinc-700">·</span>
+          <span className="font-bold text-[#ff0055] tabular-nums">{items.length}</span>
+          <span>{items.length === 1 ? "game" : "games"}</span>
+          <span className="text-zinc-700">·</span>
+          <span>Updated {new Date(typedList.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+        </div>
+
+        {typedList.description && (
+          <p className="mt-4 text-sm text-zinc-400 leading-relaxed max-w-2xl">
+            {typedList.description}
+          </p>
+        )}
       </div>
 
       {/* Add game (owner only) */}
@@ -155,20 +119,40 @@ export default async function ListDetailPage({ params }: ListPageProps) {
         </div>
       )}
 
-      {/* Game list */}
+      {/* ── Game Grid — poster cards like homepage ── */}
       {items.length === 0 ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 py-16 text-center">
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 py-16 text-center">
           <Gamepad2 className="mx-auto h-10 w-10 text-zinc-700 mb-3" />
           <p className="text-sm text-zinc-500">
             {isOwner ? "No games yet. Search and add games above!" : "This list is empty."}
           </p>
         </div>
-      ) : (
+      ) : isOwner ? (
+        /* Owner view — sortable list with drag handles */
         <SortableListItems
           items={items as any}
           listId={id}
           isOwner={isOwner}
         />
+      ) : (
+        /* Visitor view — beautiful poster grid */
+        <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2">
+          {items.map((item, index) => (
+            <div key={item.id} className="relative group">
+              <GameCover
+                slug={item.games.slug}
+                title={item.games.title}
+                coverUrl={item.games.cover_url}
+                className="w-full"
+                showTitle
+              />
+              {/* Rank badge */}
+              <div className="absolute top-1.5 left-1.5 bg-zinc-950/80 backdrop-blur-sm w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-zinc-300 border border-zinc-700/50">
+                {index + 1}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

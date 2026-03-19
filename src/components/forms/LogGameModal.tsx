@@ -130,11 +130,13 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
   const [fetchingExisting, setFetchingExisting] = useState(false)
 
   const availablePlatforms = useMemo(() => {
-    if (game?.platforms && game.platforms.length > 0) {
-      return game.platforms
+    // Always use base game platforms (editions inherit them)
+    const basePlats = baseGame?.platforms ?? game?.platforms
+    if (basePlats && basePlats.length > 0) {
+      return basePlats
     }
     return FALLBACK_PLATFORMS
-  }, [game])
+  }, [game, baseGame])
 
   useEffect(() => { setMounted(true) }, [])
 

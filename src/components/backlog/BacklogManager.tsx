@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowUpDown, Calendar, Star, Clock, Gamepad2 } from "lucide-react"
+import { ArrowUpDown, Calendar, Heart, Clock, Gamepad2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface BacklogItem {
@@ -64,7 +64,7 @@ export function BacklogManager({ initialLogs }: BacklogManagerProps) {
     { key: "added", label: "Date Added", icon: <Clock className="h-3.5 w-3.5" /> },
     { key: "title", label: "Title", icon: <ArrowUpDown className="h-3.5 w-3.5" /> },
     { key: "year", label: "Year", icon: <Calendar className="h-3.5 w-3.5" /> },
-    { key: "rating", label: "Rating", icon: <Star className="h-3.5 w-3.5" /> },
+    { key: "rating", label: "Rating", icon: <Heart className="h-3.5 w-3.5" /> },
   ]
 
   return (
@@ -124,7 +124,7 @@ export function BacklogManager({ initialLogs }: BacklogManagerProps) {
                 {item.release_year && <span>{item.release_year}</span>}
                 {item.rating != null && item.rating > 0 && (
                   <span className="flex items-center gap-0.5">
-                    <Star className="h-2.5 w-2.5 text-yellow-500" />
+                    <Heart className="h-2.5 w-2.5 fill-[#ff0055] text-[#ff0055]" />
                     {item.rating}
                   </span>
                 )}

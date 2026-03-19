@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Search, Loader2, X, Gamepad2, Star, User as UserIcon } from "lucide-react"
+import { Search, Loader2, X, Gamepad2, Heart, User as UserIcon } from "lucide-react"
 import { useGameSearch, type GameSearchResult } from "@/hooks/useGameSearch"
 import { useUserSearch } from "@/hooks/useUserSearch"
 import { cn } from "@/lib/utils"
@@ -163,7 +163,7 @@ function GameCard({ game }: { game: GameSearchResult }) {
               {game.release_year && <span>{game.release_year}</span>}
               {game.rating != null && (
                 <span className="flex items-center gap-0.5">
-                  <Star className="h-3 w-3 fill-hs-green text-hs-green" />
+                  <Heart className="h-3 w-3 fill-[#ff0055] text-[#ff0055]" />
                   {game.rating.toFixed(1)}
                 </span>
               )}

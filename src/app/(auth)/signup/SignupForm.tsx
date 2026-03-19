@@ -10,14 +10,7 @@ import { supabase } from "@/lib/supabase/client"
 import { MorphLogo } from "@/components/MorphLogo"
 import { AuthBackdrop } from "@/components/auth/AuthBackdrop"
 
-interface BackdropGame {
-  name: string
-  screenshot_url: string
-  cover_url: string | null
-  year: number | null
-}
-
-export function SignupForm({ backdropGames }: { backdropGames: BackdropGame[] }) {
+export function SignupForm() {
   const router = useRouter()
 
   const [email, setEmail] = useState("")
@@ -90,7 +83,7 @@ export function SignupForm({ backdropGames }: { backdropGames: BackdropGame[] })
   const inputClass = (field: string) =>
     `w-full bg-zinc-900/60 border text-zinc-100 text-sm px-4 py-3 rounded-md transition-all duration-200 placeholder:text-zinc-600 outline-none ${
       focused === field
-        ? "border-[#00f0ff]/50 ring-2 ring-[#00f0ff]/10 bg-zinc-800/40"
+        ? "border-[#ff0055]/50 ring-2 ring-[#ff0055]/10 bg-zinc-800/40"
         : "border-zinc-700/50 hover:border-zinc-600/50"
     }`
 
@@ -98,7 +91,7 @@ export function SignupForm({ backdropGames }: { backdropGames: BackdropGame[] })
     <div className="relative min-h-[calc(100vh-4.5rem)]">
       {/* ═══ Full-bleed backdrop ═══ */}
       <div className="absolute inset-0">
-        <AuthBackdrop games={backdropGames} />
+        <AuthBackdrop />
 
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C10] via-[#0B0C10]/40 to-transparent z-[1]" />
@@ -118,7 +111,7 @@ export function SignupForm({ backdropGames }: { backdropGames: BackdropGame[] })
         {/* Left — feature text at vertical center */}
         <div className="hidden lg:flex w-[50%] items-center p-12 pl-16">
           <div className="signup-s1 max-w-[340px]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#00f0ff]/60 mb-5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#ff0055]/60 mb-5">
               Join the community
             </p>
             <h2 className="font-serif text-[38px] leading-[1.15] text-white/80 mb-5">
@@ -148,7 +141,7 @@ export function SignupForm({ backdropGames }: { backdropGames: BackdropGame[] })
               <p className="mt-2 text-[14px] text-zinc-500">
                 Pick a username and get started.
               </p>
-              <div className="mt-4 h-[1px] bg-gradient-to-r from-[#00f0ff]/30 via-[#00f0ff]/10 to-transparent" />
+              <div className="mt-4 h-[1px] bg-gradient-to-r from-[#ff0055]/30 via-[#ff0055]/10 to-transparent" />
             </div>
 
             {/* Form */}

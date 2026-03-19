@@ -11,19 +11,33 @@ interface BackdropGame {
   year: number | null
 }
 
-export function AuthBackdrop({ games }: { games: BackdropGame[] }) {
+/**
+ * Self-fetching backdrop — loads game images client-side
+ * so the page shell renders instantly without blocking on any API.
+ */
+export function AuthBackdrop() {
+  const [games, setGames] = useState<BackdropGame[]>([])
   const [active, setActive] = useState(0)
   const [displayIdx, setDisplayIdx] = useState(0)
   const [phase, setPhase] = useState<"visible" | "fading-out" | "fading-in">("visible")
+  const [loaded, setLoaded] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Fetch backdrop games client-side (non-blocking)
+  useEffect(() => {
+    fetch("/api/games/backdrop")
+      .then((r) => r.json())
+      .then((data: BackdropGame[]) => {
+        if (data.length > 0) setGames(data)
+      })
+      .catch(() => {})
+  }, [])
 
   const advance = useCallback(() => {
     if (games.length < 2) return
-    // Phase 1: fade out current
     setPhase("fading-out")
 
     timerRef.current = setTimeout(() => {
-      // Phase 2: swap image while invisible, then fade in
       const next = (active + 1) % games.length
       setActive(next)
       setDisplayIdx(next)
@@ -49,7 +63,7 @@ export function AuthBackdrop({ games }: { games: BackdropGame[] }) {
   }
 
   const current = games[displayIdx]
-  const opacity = phase === "fading-out" ? 0 : phase === "fading-in" ? 0.5 : 0.5
+  const opacity = phase === "fading-out" ? 0 : loaded ? 0.5 : 0
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-zinc-950">
@@ -64,6 +78,7 @@ export function AuthBackdrop({ games }: { games: BackdropGame[] }) {
           fill
           className="object-cover scale-[1.03] auth-drift"
           priority
+          onLoad={() => setLoaded(true)}
         />
       </div>
 

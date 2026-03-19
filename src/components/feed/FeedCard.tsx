@@ -2,10 +2,13 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Star, User as UserIcon } from "lucide-react"
+import { useState } from "react"
+import { User as UserIcon } from "lucide-react"
+import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { LikeButton } from "@/components/shared/LikeButton"
 import { CommentSection } from "@/components/shared/CommentSection"
 import { SpoilerGuard } from "@/components/shared/SpoilerGuard"
+import { MessageCircle, ChevronDown, ChevronUp } from "lucide-react"
 
 const STATUS_LABELS: Record<string, string> = {
   played: "played",
@@ -43,9 +46,11 @@ interface FeedCardProps {
 export function FeedCard({ entry, currentUserId }: FeedCardProps) {
   const displayName = entry.display_name || entry.username
   const action = STATUS_LABELS[entry.status] ?? "logged"
+  const [commentsOpen, setCommentsOpen] = useState(false)
 
   return (
     <div className="border-b border-zinc-800/50 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
+      {/* Top row: cover + content */}
       <div className="flex gap-3">
         {/* Game cover — poster */}
         <Link
@@ -68,7 +73,7 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
         </Link>
 
         <div className="flex-1 min-w-0 pt-0.5">
-          {/* Game title — serif */}
+          {/* Game title */}
           <Link
             href={`/game/${entry.game_slug}`}
             className="font-serif text-[15px] text-zinc-50 hover:text-hs-blue transition-colors leading-tight"
@@ -76,23 +81,18 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
             {entry.game_title}
           </Link>
 
-          {/* Rating — green stars */}
+          {/* Rating — hearts */}
           {entry.rating != null && entry.rating > 0 && (
-            <div className="flex items-center gap-0.5 mt-1">
-              {Array.from({ length: Math.floor(entry.rating) }).map((_, i) => (
-                <Star key={i} className="h-3 w-3 fill-hs-green text-hs-green" />
-              ))}
-              {entry.rating % 1 >= 0.5 && (
-                <Star className="h-3 w-3 fill-hs-green/50 text-hs-green" />
-              )}
+            <div className="mt-1">
+              <HeartRatingDisplay rating={entry.rating} />
             </div>
           )}
 
-          {/* Review text — serif */}
+          {/* Review text */}
           {entry.review_text && entry.review_text.trim().length > 0 && (
             <div className="mt-1.5">
               <SpoilerGuard containsSpoilers={entry.contains_spoilers}>
-                <p className="text-[13px] text-zinc-400 leading-relaxed line-clamp-3 font-serif">
+                <p className="text-[13px] text-zinc-400 leading-relaxed line-clamp-3">
                   {entry.review_text}
                 </p>
               </SpoilerGuard>
@@ -125,8 +125,8 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
             </time>
           </div>
 
-          {/* Actions */}
-          <div className="mt-2 flex items-center gap-3">
+          {/* Like + comment toggle — single clean row */}
+          <div className="mt-2 flex items-center gap-4">
             <LikeButton
               logId={entry.id}
               logOwnerId={entry.user_id}
@@ -135,15 +135,35 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
               initialCount={entry.likeCount}
               showLabel
             />
-            <CommentSection
-              logId={entry.id}
-              logOwnerId={entry.user_id}
-              currentUserId={currentUserId}
-              initialCount={entry.commentCount}
-            />
+            <button
+              type="button"
+              onClick={() => setCommentsOpen(!commentsOpen)}
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              <MessageCircle className={`h-3.5 w-3.5 ${commentsOpen ? "text-hs-green" : ""}`} />
+              {entry.commentCount > 0 && <span className="tabular-nums">{entry.commentCount}</span>}
+              {commentsOpen ? (
+                <ChevronUp className="h-3 w-3 ml-0.5" />
+              ) : entry.commentCount > 0 ? (
+                <ChevronDown className="h-3 w-3 ml-0.5" />
+              ) : null}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Comments — full width below entire card, aligned with content */}
+      {commentsOpen && (
+        <div className="mt-3 ml-[82px]">
+          <CommentSection
+            logId={entry.id}
+            logOwnerId={entry.user_id}
+            currentUserId={currentUserId}
+            initialCount={entry.commentCount}
+            forceExpanded
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -10,14 +10,7 @@ import { supabase } from "@/lib/supabase/client"
 import { MorphLogo } from "@/components/MorphLogo"
 import { AuthBackdrop } from "@/components/auth/AuthBackdrop"
 
-interface BackdropGame {
-  name: string
-  screenshot_url: string
-  cover_url: string | null
-  year: number | null
-}
-
-export function LoginForm({ backdropGames }: { backdropGames: BackdropGame[] }) {
+export function LoginForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirectTo") || "/"
 
@@ -48,7 +41,7 @@ export function LoginForm({ backdropGames }: { backdropGames: BackdropGame[] }) 
     <div className="relative min-h-[calc(100vh-4.5rem)]">
       {/* ═══ Full-bleed backdrop ═══ */}
       <div className="absolute inset-0">
-        <AuthBackdrop games={backdropGames} />
+        <AuthBackdrop />
 
         {/* Gradient overlays */}
         {/* Bottom fade */}

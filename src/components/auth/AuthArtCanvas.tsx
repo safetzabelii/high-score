@@ -36,7 +36,6 @@ interface GridLine {
 }
 
 const PINK = "#ff0055"
-const CYAN = "#00f0ff"
 const BG = "#0B0C10"
 
 export function AuthArtCanvas({ variant = "login" }: { variant?: "login" | "signup" }) {
@@ -57,8 +56,8 @@ export function AuthArtCanvas({ variant = "login" }: { variant?: "login" | "sign
   })
 
   const isPink = variant === "login"
-  const primary = isPink ? PINK : CYAN
-  const secondary = isPink ? CYAN : PINK
+  const primary = isPink ? PINK : PINK
+  const secondary = isPink ? PINK : PINK
 
   const initState = useCallback(
     (w: number, h: number) => {
@@ -185,7 +184,7 @@ export function AuthArtCanvas({ variant = "login" }: { variant?: "login" | "sign
 
       // Background gradient — deep and moody
       const bg = ctx.createRadialGradient(w * 0.3, h * 0.4, 0, w * 0.5, h * 0.5, w * 0.9)
-      bg.addColorStop(0, isPink ? "rgba(255,0,85,0.04)" : "rgba(0,240,255,0.03)")
+      bg.addColorStop(0, isPink ? "rgba(255,0,85,0.04)" : "rgba(255,0,85,0.03)")
       bg.addColorStop(0.5, "rgba(11,12,16,0.3)")
       bg.addColorStop(1, "rgba(11,12,16,0)")
       ctx.fillStyle = bg
@@ -194,7 +193,7 @@ export function AuthArtCanvas({ variant = "login" }: { variant?: "login" | "sign
 
       // Secondary glow — bottom corner
       const bg2 = ctx.createRadialGradient(w * 0.8, h * 0.85, 0, w * 0.8, h * 0.85, w * 0.5)
-      bg2.addColorStop(0, isPink ? "rgba(0,240,255,0.025)" : "rgba(255,0,85,0.02)")
+      bg2.addColorStop(0, isPink ? "rgba(255,0,85,0.025)" : "rgba(255,0,85,0.02)")
       bg2.addColorStop(1, "rgba(11,12,16,0)")
       ctx.fillStyle = bg2
       ctx.fillRect(0, 0, w, h)
@@ -304,7 +303,7 @@ export function AuthArtCanvas({ variant = "login" }: { variant?: "login" | "sign
         const glitchY = Math.random() * h
         const glitchH = Math.random() * 3 + 1
         ctx.globalAlpha = Math.random() * 0.08 + 0.02
-        ctx.fillStyle = Math.random() > 0.5 ? PINK : CYAN
+        ctx.fillStyle = Math.random() > 0.5 ? PINK : PINK
         ctx.fillRect(0, glitchY, w, glitchH)
       }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { Gamepad2, Star, Clock, BarChart3 } from "lucide-react"
+import { Gamepad2, Heart, Clock, BarChart3 } from "lucide-react"
 
 interface StatsChartsProps {
   totalGames: number
@@ -49,7 +49,7 @@ export function StatsCharts({
           <p className="text-xs text-zinc-500">Games Logged</p>
         </div>
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-center">
-          <Star className="h-5 w-5 mx-auto mb-1 text-yellow-500" />
+          <Heart className="h-5 w-5 mx-auto mb-1 fill-[#ff0055] text-[#ff0055]" />
           <p className="text-2xl font-bold text-zinc-100 tabular-nums">
             {avgRating?.toFixed(1) ?? "—"}
           </p>

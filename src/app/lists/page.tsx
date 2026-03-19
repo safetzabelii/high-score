@@ -1,17 +1,11 @@
 import Link from "next/link"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/server"
-import { Plus, List, Lock, Globe } from "lucide-react"
+import { Plus, List, Lock, Globe, Gamepad2 } from "lucide-react"
 import type { ListRow, UserRow } from "@/types/database"
-import { ListCoverStack } from "@/components/lists/ListCoverStack"
 
 export const metadata = {
   title: "Lists — HIGH-SCORE",
-}
-
-type ListWithDetails = ListRow & {
-  users: UserRow
-  list_items: { count: number }[] | { position: number, games: { cover_url: string | null } }[] 
-  total_count?: number
 }
 
 export default async function ListsPage() {
@@ -20,26 +14,6 @@ export default async function ListsPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // To fetch both a total count AND a few items with covers, we need two queries 
-  // or a complex RPC/View. For simplicity in Next.js Server Components, we can 
-  // do one query for the list and items (with limit), and another for counts, 
-  // or we can just fetch the first 4 items with games, and fetch the total count separately.
-
-  // Let's modify the query to get exactly what we need:
-  // 1. The list details + user
-  // 2. The first 4 list items (ordered by position) WITH their game covers.
-  // 3. The total count of list items.
-  // Supabase limits on nested selects: list_items(id, position, games(cover_url)) with foreignTable limit.
-
-  const { data: rawLists } = await supabase
-    .from("lists")
-    .select("*, users(*), list_items!inner(id), items:list_items(id, position, games(cover_url))")
-    .eq("is_public", true)
-    .order("updated_at", { ascending: false })
-    .limit(50)
-
-  // Wait, there's a better way to do this without complex `.limit` on foreign tables that might not work perfectly with types.
-  // We can just query `lists` and `list_items(position, games(cover_url))`, order by position, limit 4.
   const { data: publicData } = await (supabase
     .from("lists")
     .select(`
@@ -47,7 +21,7 @@ export default async function ListsPage() {
       users(*),
       list_items(
         position,
-        games(cover_url)
+        games(cover_url, title, slug)
       )
     `)
     .eq("is_public", true)
@@ -55,16 +29,18 @@ export default async function ListsPage() {
     .limit(50) as any)
 
   const publicLists = (publicData ?? []).map((list: ListRow & { list_items: any[] }) => {
-    // Sort items by position manually just in case
     const sortedItems = [...(list.list_items || [])].sort((a, b) => a.position - b.position)
     return {
       ...list,
-      preview_covers: sortedItems.map(i => i.games?.cover_url).slice(0, 4),
-      total_count: list.list_items?.length || 0
+      preview_items: sortedItems.slice(0, 5).map((i: any) => ({
+        cover_url: i.games?.cover_url,
+        title: i.games?.title,
+        slug: i.games?.slug,
+      })),
+      total_count: list.list_items?.length || 0,
     }
   })
 
-  // Fetch user's own lists (public + private)
   let myLists: any[] = []
   if (user) {
     const { data: rawMyLists } = await (supabase
@@ -74,18 +50,22 @@ export default async function ListsPage() {
         users(*),
         list_items(
           position,
-          games(cover_url)
+          games(cover_url, title, slug)
         )
       `)
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false }) as any)
-      
+
     myLists = (rawMyLists ?? []).map((list: ListRow & { list_items: any[] }) => {
       const sortedItems = [...(list.list_items || [])].sort((a, b) => a.position - b.position)
       return {
         ...list,
-        preview_covers: sortedItems.map(i => i.games?.cover_url).slice(0, 4),
-        total_count: list.list_items?.length || 0
+        preview_items: sortedItems.slice(0, 5).map((i: any) => ({
+          cover_url: i.games?.cover_url,
+          title: i.games?.title,
+          slug: i.games?.slug,
+        })),
+        total_count: list.list_items?.length || 0,
       }
     })
   }
@@ -97,7 +77,7 @@ export default async function ListsPage() {
         {user && (
           <Link
             href="/lists/new"
-            className="inline-flex items-center gap-2 rounded-sm bg-hs-green-button hover:bg-hs-green-hover text-white px-4 py-2 text-sm font-medium transition-all"
+            className="inline-flex items-center gap-2 rounded-sm bg-[#ff0055] hover:bg-[#e6004c] text-white px-4 py-2 text-sm font-bold transition-all"
           >
             <Plus className="h-4 w-4" />
             New List
@@ -108,8 +88,8 @@ export default async function ListsPage() {
       {/* My Lists */}
       {myLists.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-lg font-semibold text-zinc-200 mb-4">My Lists</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+          <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500 mb-4">My Lists</h2>
+          <div className="space-y-4">
             {myLists.map((list: any) => (
               <ListCard key={list.id} list={list} showUser={false} />
             ))}
@@ -119,14 +99,14 @@ export default async function ListsPage() {
 
       {/* Public Lists */}
       <section>
-        <h2 className="text-lg font-semibold text-zinc-200 mb-4">Community Lists</h2>
+        <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500 mb-4">Community Lists</h2>
         {publicLists.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 py-16 text-center">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 py-16 text-center">
             <List className="mx-auto h-10 w-10 text-zinc-700 mb-3" />
             <p className="text-sm text-zinc-500">No public lists yet. Be the first to create one!</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+          <div className="space-y-4">
             {publicLists.map((list: any) => (
               <ListCard key={list.id} list={list} showUser />
             ))}
@@ -141,55 +121,78 @@ function ListCard({
   list,
   showUser,
 }: {
-  list: ListWithDetails & { preview_covers?: (string | null)[] }
+  list: any
   showUser: boolean
 }) {
   const itemCount = list.total_count ?? 0
+  const previews = list.preview_items ?? []
 
   return (
     <Link
       href={`/lists/${list.id}`}
-      className="group flex flex-col gap-4 rounded-[4px] border border-zinc-800/80 bg-zinc-900/40 p-4 hover:bg-zinc-800/60 hover:border-zinc-700 transition-all duration-300 relative overflow-hidden"
+      className="group block rounded-lg border border-zinc-800/80 bg-zinc-900/30 hover:bg-zinc-800/40 hover:border-zinc-700 transition-all duration-200 overflow-hidden"
     >
-      <div className="flex gap-4">
-        {/* Cover Stack Area */}
-        <div className="w-[100px] sm:w-[120px] shrink-0 h-[140px] sm:h-[160px]">
-          <ListCoverStack 
-            covers={list.preview_covers || []} 
-            totalItems={itemCount} 
-            maxCovers={4} 
-          />
+      {/* Top section — poster strip preview */}
+      <div className="relative h-[120px] bg-zinc-900 overflow-hidden">
+        {previews.length > 0 ? (
+          <div className="flex h-full">
+            {previews.map((item: any, i: number) => (
+              <div key={i} className="relative flex-1 min-w-0 h-full">
+                {item.cover_url ? (
+                  <Image
+                    src={item.cover_url}
+                    alt={item.title || ""}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="200px"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-zinc-800">
+                    <Gamepad2 className="h-4 w-4 text-zinc-700" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Gamepad2 className="h-8 w-8 text-zinc-800" />
+          </div>
+        )}
+        {/* Gradient overlay at bottom */}
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-transparent" />
+        {/* Item count badge */}
+        <div className="absolute bottom-3 right-3 bg-zinc-950/80 backdrop-blur-sm px-2.5 py-1 rounded text-[11px] font-bold text-zinc-300 tabular-nums border border-zinc-700/50">
+          {itemCount} {itemCount === 1 ? "game" : "games"}
         </div>
+      </div>
 
-        {/* Text Info Area */}
-        <div className="flex flex-col flex-1 min-w-0 py-1">
-          <div className="flex items-center gap-2 mb-1.5">
-            <h3 className="text-base font-bold text-zinc-100 group-hover:text-hs-blue transition-colors line-clamp-2 leading-tight">
-              {list.title}
-            </h3>
-            {list.is_public ? (
-              <Globe className="h-3 w-3 text-zinc-600 shrink-0" />
-            ) : (
-              <Lock className="h-3 w-3 text-zinc-600 shrink-0" />
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 tracking-wide uppercase mb-2">
-            {showUser && list.users && (
-              <>
-                <span className="text-zinc-400">By {list.users.display_name}</span>
-                <span>·</span>
-              </>
-            )}
-            <span>{itemCount} {itemCount === 1 ? "game" : "games"}</span>
-          </div>
-
-          {list.description && (
-            <p className="text-sm text-zinc-400 line-clamp-3 leading-relaxed">
-              {list.description}
-            </p>
+      {/* Bottom section — list info */}
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-[15px] font-bold text-zinc-100 group-hover:text-[#ff0055] transition-colors truncate">
+            {list.title}
+          </h3>
+          {list.is_public ? (
+            <Globe className="h-3 w-3 text-zinc-600 shrink-0" />
+          ) : (
+            <Lock className="h-3 w-3 text-zinc-600 shrink-0" />
           )}
         </div>
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-500">
+          {showUser && list.users && (
+            <>
+              <span className="text-zinc-400">{list.users.display_name}</span>
+              <span className="text-zinc-700">·</span>
+            </>
+          )}
+          <span>Updated {new Date(list.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+        </div>
+        {list.description && (
+          <p className="text-[12px] text-zinc-500 mt-1.5 line-clamp-1">
+            {list.description}
+          </p>
+        )}
       </div>
     </Link>
   )

@@ -2,7 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { User as UserIcon, Star } from "lucide-react"
+import { User as UserIcon } from "lucide-react"
+import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { LikeButton } from "@/components/shared/LikeButton"
 import { CommentSection } from "@/components/shared/CommentSection"
 import { SpoilerGuard } from "@/components/shared/SpoilerGuard"
@@ -64,14 +65,7 @@ export function ReviewCard({
               {displayName}
             </Link>
             {review.rating != null && review.rating > 0 && (
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: Math.floor(review.rating) }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-hs-green text-hs-green" />
-                ))}
-                {review.rating % 1 >= 0.5 && (
-                  <Star className="h-3.5 w-3.5 fill-hs-green/50 text-hs-green" />
-                )}
-              </div>
+              <HeartRatingDisplay rating={review.rating} size="md" />
             )}
           </div>
         </div>
@@ -81,7 +75,7 @@ export function ReviewCard({
       {review.review_text && (
         <div className="mb-3">
           <SpoilerGuard containsSpoilers={review.contains_spoilers}>
-            <p className="text-[15px] text-zinc-300 leading-relaxed whitespace-pre-line font-serif">
+            <p className="text-[15px] text-zinc-300 leading-relaxed whitespace-pre-line">
               {review.review_text}
             </p>
           </SpoilerGuard>

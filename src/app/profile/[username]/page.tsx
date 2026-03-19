@@ -92,6 +92,18 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
 
   const isOwn = currentUser?.id === profile.id
 
+  // Compute rating distribution
+  const ratingDist: Record<string, number> = {}
+  for (let r = 0.5; r <= 5; r += 0.5) {
+    ratingDist[r.toFixed(1)] = 0
+  }
+  for (const log of (logs ?? []) as any[]) {
+    if (log.rating != null && log.rating > 0) {
+      const key = log.rating.toFixed(1)
+      ratingDist[key] = (ratingDist[key] ?? 0) + 1
+    }
+  }
+
   const stats = {
     gamesLogged: totalCount ?? 0,
     followers: followersRes.count ?? 0,
@@ -117,6 +129,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
       <ProfileHeader
         profile={profile}
         stats={stats}
+        ratingDist={ratingDist}
         isOwn={isOwn}
         isFollowing={isFollowing}
         currentUserId={currentUser?.id ?? null}

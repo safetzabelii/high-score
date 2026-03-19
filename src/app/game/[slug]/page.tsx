@@ -2,7 +2,8 @@ import { notFound } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { Gamepad2, Star, Eye, Heart, List as ListIcon, MessageSquare } from "lucide-react"
+import { Gamepad2, Eye, Heart, List as ListIcon, MessageSquare } from "lucide-react"
+import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { ShareButton } from "@/components/shared/ShareButton"
 import { SectionHeading } from "@/components/shared/SectionHeading"
 import { getCachedGameBySlug, coverUrl } from "@/lib/igdb/fetch"
@@ -272,14 +273,7 @@ export default async function GamePage({ params }: GamePageProps) {
                 </div>
                 {avgRating != null && (
                   <div className="flex items-center gap-2 mt-2">
-                    <div className="flex items-center gap-0.5">
-                      {Array.from({ length: Math.floor(avgRating) }).map((_, i) => (
-                        <Star key={i} className="h-3 w-3 fill-hs-green text-hs-green" />
-                      ))}
-                      {avgRating % 1 >= 0.5 && (
-                        <Star className="h-3 w-3 fill-hs-green/50 text-hs-green" />
-                      )}
-                    </div>
+                    <HeartRatingDisplay rating={avgRating} />
                     <span className="text-lg font-light text-zinc-200 tabular-nums">{avgRating.toFixed(1)}</span>
                   </div>
                 )}
@@ -330,7 +324,7 @@ export default async function GamePage({ params }: GamePageProps) {
             {/* Summary — serif body text */}
             {game.summary && (
               <div className="mt-5">
-                <p className="text-[15px] text-zinc-400 leading-relaxed font-serif max-w-2xl">
+                <p className="text-[15px] text-zinc-400 leading-relaxed max-w-2xl">
                   {game.summary}
                 </p>
               </div>
@@ -353,7 +347,7 @@ export default async function GamePage({ params }: GamePageProps) {
             {/* IGDB rating */}
             {game.rating != null && (
               <div className="mt-4 flex items-center gap-2 text-sm text-zinc-500">
-                <Star className="h-4 w-4 text-yellow-500" />
+                <Heart className="h-4 w-4 fill-yellow-500 text-yellow-500" />
                 <span className="font-semibold text-zinc-200 tabular-nums">{game.rating.toFixed(1)}</span>
                 <span className="text-[11px] uppercase tracking-wider">IGDB</span>
               </div>

@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Star, ArrowUpDown, Pencil } from "lucide-react"
+import { ArrowUpDown, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import dynamic from "next/dynamic"
 import type { GameSearchResult, ExistingLog } from "@/components/forms/LogGameModal"
@@ -192,14 +192,6 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
                       </div>
                     )}
 
-                    {/* Rating badge — bottom left on hover */}
-                    {log.rating != null && log.rating > 0 && (
-                      <div className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/70 backdrop-blur-sm px-1 py-0.5 text-[9px] font-bold text-hs-blue opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Star className="h-2 w-2 fill-current" />
-                        {log.rating.toFixed(1)}
-                      </div>
-                    )}
-
                     {/* Title on hover */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
                       <p className="text-[9px] font-medium text-white leading-tight line-clamp-2">
@@ -208,6 +200,23 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
                     </div>
                   </div>
                 </Link>
+
+                {/* Heart rating below poster — always visible */}
+                {log.rating != null && log.rating > 0 && (
+                  <div className="flex items-center gap-[1px] mt-1 justify-center">
+                    {Array.from({ length: Math.floor(log.rating) }).map((_, i) => (
+                      <svg key={i} viewBox="0 0 24 24" className="h-[10px] w-[10px]">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.42 4.42 3 8.5 3c1.74 0 3.41.81 4.5 2.09C14.09 3.81 15.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#4a4a52" />
+                      </svg>
+                    ))}
+                    {log.rating % 1 >= 0.5 && (
+                      <svg viewBox="0 0 24 24" className="h-[10px] w-[10px]">
+                        <clipPath id={`hh-${log.id}`}><rect x="0" y="0" width="12" height="24" /></clipPath>
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.42 4.42 3 8.5 3c1.74 0 3.41.81 4.5 2.09C14.09 3.81 15.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#4a4a52" clipPath={`url(#hh-${log.id})`} />
+                      </svg>
+                    )}
+                  </div>
+                )}
 
                 {/* Edit button for own profile */}
                 {isOwn && (
