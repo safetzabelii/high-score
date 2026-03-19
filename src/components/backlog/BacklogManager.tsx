@@ -109,7 +109,6 @@ export function BacklogManager({ initialLogs }: BacklogManagerProps) {
                   fill
                   className="object-cover group-hover:scale-105 transition-transform"
                   sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
-                  unoptimized
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">

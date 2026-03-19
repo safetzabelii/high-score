@@ -45,7 +45,7 @@ export function ReviewCard({
         <Link href={`/profile/${review.users.username}`} className="flex-shrink-0">
           <div className="relative h-10 w-10 overflow-hidden rounded-full bg-zinc-800">
             {review.users.avatar_url ? (
-              <Image src={review.users.avatar_url} alt={displayName} fill className="object-cover" unoptimized />
+              <Image src={review.users.avatar_url} alt={displayName} fill className="object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
                 <UserIcon className="h-4 w-4 text-zinc-600" />

@@ -113,7 +113,6 @@ export default async function ListDetailPage({ params }: ListPageProps) {
                     alt={typedList.users.display_name}
                     fill
                     className="object-cover"
-                    unoptimized
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">

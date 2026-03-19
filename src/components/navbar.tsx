@@ -196,7 +196,7 @@ export default function Navbar() {
                   <Button variant="ghost" className="relative h-7 w-7 rounded-full p-0 hover:ring-1 hover:ring-zinc-600 transition-all">
                     <Avatar className="h-7 w-7">
                       {avatarUrl ? (
-                        <Image src={avatarUrl} alt={username} fill className="object-cover rounded-full" unoptimized />
+                        <Image src={avatarUrl} alt={username} fill className="object-cover rounded-full" />
                       ) : (
                         <AvatarFallback className="bg-zinc-800 text-zinc-400 text-[10px] font-semibold">
                           {username.substring(0, 2).toUpperCase()}

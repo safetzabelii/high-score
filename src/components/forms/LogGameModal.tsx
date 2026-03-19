@@ -422,7 +422,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
                   {(selectedEdition?.cover_url ?? game.cover_url) ? (
                     <Image
                       src={(selectedEdition?.cover_url ?? game.cover_url)!}
-                      alt={game.title} fill className="object-cover" sizes="48px" unoptimized
+                      alt={game.title} fill className="object-cover" sizes="48px"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-zinc-600 text-xs">?</div>
@@ -472,7 +472,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
                         >
                           {baseGame?.cover_url ? (
                             <div className="relative h-10 w-7 overflow-hidden rounded-[2px] flex-shrink-0">
-                              <Image src={baseGame.cover_url} alt={baseGame.title} fill className="object-cover" sizes="28px" unoptimized />
+                              <Image src={baseGame.cover_url} alt={baseGame.title} fill className="object-cover" sizes="28px" />
                             </div>
                           ) : (
                             <div className="h-10 w-7 rounded-[2px] bg-zinc-800 flex items-center justify-center text-zinc-600 text-[9px]">?</div>
@@ -497,7 +497,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
                           >
                             {ed.cover_url ? (
                               <div className="relative h-10 w-7 overflow-hidden rounded-[2px] flex-shrink-0">
-                                <Image src={ed.cover_url} alt={ed.name} fill className="object-cover" sizes="28px" unoptimized />
+                                <Image src={ed.cover_url} alt={ed.name} fill className="object-cover" sizes="28px" />
                               </div>
                             ) : (
                               <div className="h-10 w-7 rounded-[2px] bg-zinc-800 flex items-center justify-center text-zinc-600 text-[9px]">?</div>

@@ -6,7 +6,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Star, ArrowUpDown, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { LogGameModal, type GameSearchResult, type ExistingLog } from "@/components/forms/LogGameModal"
+import dynamic from "next/dynamic"
+import type { GameSearchResult, ExistingLog } from "@/components/forms/LogGameModal"
+
+const LogGameModal = dynamic(() => import("@/components/forms/LogGameModal").then(m => ({ default: m.LogGameModal })), { ssr: false })
 import type { GameStatus } from "@/types/database"
 
 interface GameWithCover {
@@ -182,7 +185,6 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
                         fill
                         className="object-cover"
                         sizes="(max-width: 640px) 25vw, (max-width: 768px) 20vw, (max-width: 1024px) 14vw, 12.5vw"
-                        unoptimized
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center p-2 text-center text-[10px] text-zinc-600">

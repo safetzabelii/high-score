@@ -123,7 +123,6 @@ export function GameSearchCombobox({
                           fill
                           className="object-cover"
                           sizes="36px"
-                          unoptimized
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-zinc-600 text-xs">

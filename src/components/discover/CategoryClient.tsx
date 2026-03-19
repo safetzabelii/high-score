@@ -118,7 +118,6 @@ function GameCard({ game }: { game: BaseGame }) {
             fill
             className="object-cover"
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
-            unoptimized
           />
         ) : (
           <div className="flex h-full items-center justify-center p-3 text-center text-xs text-zinc-600">

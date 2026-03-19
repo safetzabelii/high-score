@@ -36,7 +36,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
   // Fetch initial batch serverside for SEO / speed
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   const res = await fetch(`${baseUrl}/api/games/discover?category=${category}&limit=30&offset=0`, {
-    cache: "no-store"
+    next: { revalidate: 1800 }
   })
   
   let initialGames: BaseGame[] = []

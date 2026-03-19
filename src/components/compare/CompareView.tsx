@@ -79,7 +79,6 @@ export function CompareView({
                       alt={f.display_name}
                       fill
                       className="object-cover"
-                      unoptimized
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
@@ -153,7 +152,6 @@ export function CompareView({
                               fill
                               className="object-cover"
                               sizes="28px"
-                              unoptimized
                             />
                           ) : null}
                         </div>

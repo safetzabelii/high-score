@@ -169,7 +169,6 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
                             className="object-cover opacity-90 transition-transform duration-700 group-hover/cover:scale-105"
                             sizes="(max-width: 640px) 60vw, 65vw"
                             priority={i === 0}
-                            unoptimized
                           />
                           <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-zinc-900 transition-opacity" />
                         </>
@@ -580,7 +579,6 @@ function GameCard({ game }: { game: GameSearchResult }) {
             fill
             className="object-cover"
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
-            unoptimized
           />
         ) : (
           <div className="flex h-full items-center justify-center p-3 text-center text-xs text-zinc-600">

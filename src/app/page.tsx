@@ -25,12 +25,16 @@ export default async function HomePage() {
     popularRaw,
     recentLogsRes,
     activeUsersRes,
+    logCountRes,
+    followerCountRes,
   ] = await Promise.all([
     supabase.from("users").select("*").eq("id", user.id).single(),
     supabase.from("follows").select("following_id").eq("follower_id", user.id),
     getPopularGames(12),
     (supabase.from("game_logs").select("game_id, games(*)").order("created_at", { ascending: false }).limit(30) as any),
     (supabase.rpc("get_active_users_fallback").limit(8) as any),
+    supabase.from("game_logs").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", user.id),
   ])
 
   const profile = profileRes.data
@@ -88,12 +92,10 @@ export default async function HomePage() {
   const feedLogs = hasMore ? allFeedRows.slice(0, PAGE_SIZE) : allFeedRows
   const feedLogIds = feedLogs.filter((l) => l.users && l.games).map((l) => l.id)
 
-  const [likeCountsRes, userLikesRes, commentCountsRes, logCountRes, followerCountRes] = await Promise.all([
+  const [likeCountsRes, userLikesRes, commentCountsRes] = await Promise.all([
     (supabase.from("likes").select("log_id").in("log_id", feedLogIds.length > 0 ? feedLogIds : [""]) as any),
     supabase.from("likes").select("log_id").eq("user_id", user.id).in("log_id", feedLogIds.length > 0 ? feedLogIds : [""]),
     (supabase.from("comments").select("log_id").in("log_id", feedLogIds.length > 0 ? feedLogIds : [""]) as any),
-    supabase.from("game_logs").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", user.id),
   ])
 
   const likeCountMap = new Map<string, number>()
@@ -206,7 +208,6 @@ export default async function HomePage() {
                         fill
                         className="object-cover"
                         sizes="70px"
-                        unoptimized
                       />
                     )}
                   </Link>
@@ -315,7 +316,7 @@ export default async function HomePage() {
                     >
                       <div className="relative h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-zinc-800">
                         {u.avatar_url ? (
-                          <Image src={u.avatar_url} alt={u.display_name} fill className="object-cover" unoptimized />
+                          <Image src={u.avatar_url} alt={u.display_name} fill className="object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <UserIcon className="h-3 w-3 text-zinc-600" />

@@ -59,7 +59,6 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
               fill
               className="object-cover"
               sizes="70px"
-              unoptimized
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center p-2 text-center text-[10px] text-zinc-600">
@@ -108,7 +107,7 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
             >
               <div className="relative h-5 w-5 flex-shrink-0 overflow-hidden rounded-full bg-zinc-800">
                 {entry.avatar_url ? (
-                  <Image src={entry.avatar_url} alt={displayName} fill className="object-cover" unoptimized />
+                  <Image src={entry.avatar_url} alt={displayName} fill className="object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
                     <UserIcon className="h-2.5 w-2.5 text-zinc-600" />

@@ -121,7 +121,6 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
                 fill
                 className="object-cover"
                 sizes="40px"
-                unoptimized
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-[8px] text-zinc-600">

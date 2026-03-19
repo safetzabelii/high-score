@@ -146,7 +146,6 @@ function GameCard({ game }: { game: GameSearchResult }) {
             fill
             className="object-cover"
             sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-            unoptimized
           />
         ) : (
           <div className="flex h-full items-center justify-center p-3 text-center text-xs text-zinc-600">
@@ -240,7 +239,6 @@ function UserResults({ search }: { search: ReturnType<typeof useUserSearch> }) {
                 alt={user.display_name}
                 fill
                 className="object-cover"
-                unoptimized
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center">

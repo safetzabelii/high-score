@@ -145,7 +145,6 @@ function ActivityRow({ item }: { item: ActivityItem }) {
                 fill
                 className="object-cover"
                 sizes="28px"
-                unoptimized
               />
             ) : null}
           </Link>
@@ -230,7 +229,6 @@ function ActivityRow({ item }: { item: ActivityItem }) {
                   alt={u.display_name}
                   fill
                   className="object-cover"
-                  unoptimized
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">

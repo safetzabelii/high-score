@@ -166,7 +166,6 @@ limit 24;`
                     fill
                     className="object-cover"
                     sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 16vw"
-                    unoptimized
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center p-2 text-center text-[10px] text-zinc-600">

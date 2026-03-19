@@ -185,7 +185,6 @@ export default async function GamePage({ params }: GamePageProps) {
             alt=""
             fill
             className="object-cover"
-            unoptimized
             priority
           />
         ) : (
@@ -207,7 +206,6 @@ export default async function GamePage({ params }: GamePageProps) {
                   alt={game.title}
                   fill
                   className="object-cover"
-                  unoptimized
                   priority
                 />
               ) : (

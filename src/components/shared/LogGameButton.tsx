@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import { Plus } from "lucide-react"
-import { LogGameModal } from "@/components/forms/LogGameModal"
 import { cn } from "@/lib/utils"
+
+const LogGameModal = dynamic(() => import("@/components/forms/LogGameModal").then(m => ({ default: m.LogGameModal })), { ssr: false })
 
 interface LogGameButtonProps {
   className?: string

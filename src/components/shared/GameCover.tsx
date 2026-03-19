@@ -64,7 +64,6 @@ export function GameCover({
             fill
             className="object-cover"
             sizes={size === "sm" ? "70px" : size === "md" ? "125px" : size === "lg" ? "150px" : "230px"}
-            unoptimized
           />
         ) : (
           <div className="flex h-full items-center justify-center p-2 text-center text-[10px] text-zinc-600">

@@ -60,7 +60,6 @@ export function ListCoverStack({
                 fill
                 className="object-cover"
                 sizes="100px"
-                unoptimized
               />
             ) : (
               <div className="flex h-full w-full flex-col items-center justify-center bg-zinc-900">
