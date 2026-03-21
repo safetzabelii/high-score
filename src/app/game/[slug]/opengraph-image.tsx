@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ImageResponse } from 'next/og'
 import { getCachedGameBySlug } from '@/lib/igdb/fetch'
 import { createServiceClient } from '@/lib/supabase/service'
