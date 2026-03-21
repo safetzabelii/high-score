@@ -13,8 +13,8 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
     if (!res.ok) return null
     const buffer = await res.arrayBuffer()
     const base64 = Buffer.from(buffer).toString('base64')
-    const contentType = res.headers.get('content-type') || 'image/jpeg'
-    return `data:${contentType};base64,${base64}`
+    const ct = res.headers.get('content-type') || 'image/jpeg'
+    return `data:${ct};base64,${base64}`
   } catch {
     return null
   }
@@ -47,7 +47,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     .select('*, games(*)')
     .eq('list_id', id)
     .order('position', { ascending: true })
-    .limit(6)
+    .limit(8)
 
   const gameItems = (items ?? []) as (ListItemRow & { games: GameRow })[]
 
@@ -56,16 +56,21 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     .select('*', { count: 'exact', head: true })
     .eq('list_id', id)
 
-  // Pre-fetch cover images as base64
+  // Fetch up to 8 covers
   const coverUrls = gameItems
     .filter(item => !!item.games?.cover_url)
     .map(item => item.games.cover_url!.replace(/t_[a-z0-9_]+/, 't_cover_big'))
-    .slice(0, 5)
+    .slice(0, 8)
 
   const coverDataUris = await Promise.all(coverUrls.map(fetchImageAsBase64))
   const covers = coverDataUris.filter((uri): uri is string => uri !== null)
 
-  const titleSize = typedList.title.length > 30 ? 44 : typedList.title.length > 18 ? 56 : 64
+  const titleSize = typedList.title.length > 28 ? 42 : typedList.title.length > 16 ? 52 : 64
+
+  // Grid: 4 columns x 2 rows, each cell is 300x315
+  // Cover takes full cell with slight gap
+  const cellW = 300
+  const cellH = 315
 
   return new ImageResponse(
     <div
@@ -78,7 +83,64 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         overflow: 'hidden',
       }}
     >
-      {/* Subtle gradient background */}
+      {/* Game cover grid as background */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          width: '1200px',
+          height: '630px',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+        }}
+      >
+        {covers.map((uri, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              width: `${cellW}px`,
+              height: `${cellH}px`,
+              padding: '4px',
+            }}
+          >
+            <img
+              src={uri}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '8px',
+              }}
+            />
+          </div>
+        ))}
+        {/* Fill empty cells with dark placeholders */}
+        {Array.from({ length: Math.max(0, 8 - covers.length) }).map((_, i) => (
+          <div
+            key={`empty-${i}`}
+            style={{
+              display: 'flex',
+              width: `${cellW}px`,
+              height: `${cellH}px`,
+              padding: '4px',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                width: '100%',
+                height: '100%',
+                background: '#18181b',
+                borderRadius: '8px',
+              }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Dark overlay to make text readable */}
       <div
         style={{
           display: 'flex',
@@ -87,208 +149,87 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(135deg, #09090b 0%, #18181b 50%, #09090b 100%)',
+          background: 'rgba(0,0,0,0.65)',
         }}
       />
 
-      {/* Content */}
+      {/* Centered text content */}
       <div
         style={{
           display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
           width: '100%',
           height: '100%',
-          padding: '56px 64px',
           position: 'relative',
-          gap: '48px',
-          alignItems: 'center',
+          padding: '40px 80px',
+          gap: '20px',
         }}
       >
-        {/* Left — stacked covers */}
-        {covers.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexShrink: 0,
-              width: covers.length >= 3 ? '380px' : '260px',
-              height: '420px',
-              position: 'relative',
-            }}
-          >
-            {covers.length === 1 ? (
-              <img
-                src={covers[0]}
-                style={{
-                  width: '240px',
-                  height: '340px',
-                  borderRadius: '16px',
-                  objectFit: 'cover',
-                  border: '2px solid rgba(255,255,255,0.1)',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
-                }}
-              />
-            ) : covers.length === 2 ? (
-              <>
-                <img
-                  src={covers[0]}
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: '20px',
-                    width: '200px',
-                    height: '285px',
-                    borderRadius: '14px',
-                    objectFit: 'cover',
-                    border: '2px solid rgba(255,255,255,0.1)',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
-                  }}
-                />
-                <img
-                  src={covers[1]}
-                  style={{
-                    position: 'absolute',
-                    left: '80px',
-                    top: '60px',
-                    width: '200px',
-                    height: '285px',
-                    borderRadius: '14px',
-                    objectFit: 'cover',
-                    border: '2px solid rgba(255,255,255,0.1)',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
-                  }}
-                />
-              </>
-            ) : (
-              // 3+ covers — fan layout
-              <>
-                {covers.slice(0, Math.min(covers.length, 4)).map((uri, i) => {
-                  const offsets = [
-                    { left: 0, top: 40, rotate: '-6deg', z: 4 },
-                    { left: 90, top: 10, rotate: '-2deg', z: 3 },
-                    { left: 180, top: 30, rotate: '3deg', z: 2 },
-                    { left: 130, top: 70, rotate: '6deg', z: 1 },
-                  ]
-                  const o = offsets[i]
-                  return (
-                    <img
-                      key={i}
-                      src={uri}
-                      style={{
-                        position: 'absolute',
-                        left: `${o.left}px`,
-                        top: `${o.top}px`,
-                        width: '180px',
-                        height: '255px',
-                        borderRadius: '12px',
-                        objectFit: 'cover',
-                        border: '2px solid rgba(255,255,255,0.12)',
-                        boxShadow: '0 15px 50px rgba(0,0,0,0.8)',
-                        transform: `rotate(${o.rotate})`,
-                      }}
-                    />
-                  )
-                })}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Right side — info */}
+        {/* List badge */}
         <div
           style={{
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            flex: 1,
-            gap: '18px',
-            minWidth: 0,
+            padding: '8px 24px',
+            borderRadius: '8px',
+            background: 'rgba(255,0,85,0.2)',
+            border: '2px solid rgba(255,0,85,0.5)',
+            fontSize: 18,
+            fontWeight: 800,
+            color: '#ff0055',
+            letterSpacing: '0.15em',
           }}
         >
-          {/* List badge */}
-          <div style={{ display: 'flex' }}>
-            <div
-              style={{
-                display: 'flex',
-                padding: '6px 18px',
-                borderRadius: '8px',
-                background: 'rgba(255,0,85,0.15)',
-                border: '1.5px solid rgba(255,0,85,0.35)',
-                fontSize: 18,
-                fontWeight: 800,
-                color: '#ff0055',
-                letterSpacing: '0.12em',
-              }}
-            >
-              LIST
-            </div>
-          </div>
+          LIST
+        </div>
 
-          {/* Title */}
+        {/* Title */}
+        <div
+          style={{
+            display: 'flex',
+            fontSize: titleSize,
+            fontWeight: 800,
+            color: '#ffffff',
+            lineHeight: 1.1,
+            letterSpacing: '-0.02em',
+            textAlign: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {typedList.title}
+        </div>
+
+        {/* Description */}
+        {typedList.description && (
           <div
             style={{
               display: 'flex',
-              fontSize: titleSize,
-              fontWeight: 800,
-              color: '#ffffff',
-              lineHeight: 1.1,
-              letterSpacing: '-0.02em',
+              fontSize: 22,
+              color: '#d4d4d8',
+              lineHeight: 1.4,
+              textAlign: 'center',
+              justifyContent: 'center',
+              maxWidth: '700px',
             }}
           >
-            {typedList.title}
+            {typedList.description.length > 90
+              ? typedList.description.slice(0, 90) + '...'
+              : typedList.description}
           </div>
+        )}
 
-          {/* Description */}
-          {typedList.description && (
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 22,
-                color: '#a1a1aa',
-                lineHeight: 1.4,
-              }}
-            >
-              {typedList.description.length > 100
-                ? typedList.description.slice(0, 100) + '...'
-                : typedList.description}
-            </div>
-          )}
-
-          {/* Stats row */}
-          <div style={{ display: 'flex', gap: '28px', alignItems: 'center', marginTop: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: 40, fontWeight: 800, color: '#ffffff' }}>{totalGames ?? 0}</span>
-              <span style={{ fontSize: 22, color: '#71717a', fontWeight: 500 }}>game{(totalGames ?? 0) !== 1 ? 's' : ''}</span>
-            </div>
-            <div style={{ display: 'flex', width: '2px', height: '32px', background: 'rgba(255,255,255,0.1)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: 22, color: '#a1a1aa' }}>by</span>
-              <span style={{ fontSize: 22, color: '#ffffff', fontWeight: 600 }}>{typedList.users.username}</span>
-            </div>
+        {/* Stats row */}
+        <div style={{ display: 'flex', gap: '28px', alignItems: 'center', marginTop: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: 38, fontWeight: 800, color: '#ffffff' }}>{totalGames ?? 0}</span>
+            <span style={{ fontSize: 22, color: '#a1a1aa', fontWeight: 500 }}>game{(totalGames ?? 0) !== 1 ? 's' : ''}</span>
           </div>
-
-          {/* Game names */}
-          {gameItems.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-              {gameItems.slice(0, 4).map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    fontSize: 20,
-                    color: '#a1a1aa',
-                    gap: '10px',
-                  }}
-                >
-                  <span style={{ color: '#52525b', fontWeight: 700, minWidth: '28px' }}>{i + 1}.</span>
-                  <span>{item.games?.title ?? 'Unknown'}</span>
-                </div>
-              ))}
-              {(totalGames ?? 0) > 4 && (
-                <div style={{ display: 'flex', fontSize: 18, color: '#52525b', paddingLeft: '38px', fontWeight: 500 }}>
-                  +{(totalGames ?? 0) - 4} more
-                </div>
-              )}
-            </div>
-          )}
+          <div style={{ display: 'flex', width: '2px', height: '32px', background: 'rgba(255,255,255,0.2)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: 22, color: '#a1a1aa' }}>by</span>
+            <span style={{ fontSize: 24, color: '#ffffff', fontWeight: 700 }}>{typedList.users.username}</span>
+          </div>
         </div>
       </div>
 
@@ -300,8 +241,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           bottom: 0,
           left: 0,
           right: 0,
-          height: '56px',
-          background: 'rgba(0,0,0,0.6)',
+          height: '52px',
+          background: 'rgba(0,0,0,0.7)',
           borderTop: '1px solid rgba(255,255,255,0.08)',
           alignItems: 'center',
           justifyContent: 'space-between',
