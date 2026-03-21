@@ -32,14 +32,13 @@ export async function generateMetadata({ params }: GamePageProps): Promise<Metad
     openGraph: {
       title: `${game.title} — HIGH-SCORE`,
       description,
-      images: ogImage ? [{ url: ogImage, width: 264, height: 374 }] : [],
       type: "website",
+      siteName: "HIGH-SCORE",
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: `${game.title} — HIGH-SCORE`,
       description,
-      images: ogImage ? [ogImage] : [],
     },
   }
 }

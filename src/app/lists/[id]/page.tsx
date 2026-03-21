@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: ListPageProps): Promise<Metad
   return {
     title,
     description,
-    openGraph: { title, description, type: "website" },
-    twitter: { card: "summary", title, description },
+    openGraph: { title, description, type: "website", siteName: "HIGH-SCORE" },
+    twitter: { card: "summary_large_image", title, description },
   }
 }
 
