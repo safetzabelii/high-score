@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { AddGameToList } from "@/components/lists/AddGameToList"
 import { SortableListItems } from "@/components/lists/SortableListItems"
 import { GameCover } from "@/components/shared/GameCover"
+import { ShareButton } from "@/components/shared/ShareButton"
 import type { ListRow, ListItemRow, UserRow, GameRow } from "@/types/database"
 
 interface ListPageProps {
@@ -66,15 +67,18 @@ export default async function ListDetailPage({ params }: ListPageProps) {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       {/* ── Header ── */}
       <div className="mb-8 pb-6 border-b border-zinc-800/60">
-        <div className="flex items-start gap-3 mb-2">
-          {typedList.is_public ? (
-            <Globe className="h-4 w-4 text-zinc-600 mt-1.5 shrink-0" />
-          ) : (
-            <Lock className="h-4 w-4 text-zinc-600 mt-1.5 shrink-0" />
-          )}
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-50 tracking-tight leading-tight">
-            {typedList.title}
-          </h1>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex items-start gap-3">
+            {typedList.is_public ? (
+              <Globe className="h-4 w-4 text-zinc-600 mt-1.5 shrink-0" />
+            ) : (
+              <Lock className="h-4 w-4 text-zinc-600 mt-1.5 shrink-0" />
+            )}
+            <h1 className="text-2xl sm:text-3xl font-black text-zinc-50 tracking-tight leading-tight">
+              {typedList.title}
+            </h1>
+          </div>
+          <ShareButton url={`/lists/${id}`} title={typedList.title} />
         </div>
 
         <div className="flex items-center gap-3 mt-3 text-[12px] text-zinc-500">
