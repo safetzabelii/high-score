@@ -4,6 +4,7 @@ import Link from "next/link"
 import type { Metadata } from "next"
 import { Globe, Lock, Gamepad2, User as UserIcon } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/service"
 import { AddGameToList } from "@/components/lists/AddGameToList"
 import { SortableListItems } from "@/components/lists/SortableListItems"
 import { GameCover } from "@/components/shared/GameCover"
@@ -16,11 +17,12 @@ interface ListPageProps {
 
 export async function generateMetadata({ params }: ListPageProps): Promise<Metadata> {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data: list } = await (supabase
     .from("lists")
-    .select("title, description")
+    .select("title, description, is_public")
     .eq("id", id)
+    .eq("is_public", true)
     .single() as any)
 
   const title = list ? `${list.title} — HIGH-SCORE` : "List — HIGH-SCORE"
@@ -37,12 +39,14 @@ export async function generateMetadata({ params }: ListPageProps): Promise<Metad
 export default async function ListDetailPage({ params }: ListPageProps) {
   const { id } = await params
   const supabase = await createClient()
+  const serviceDb = createServiceClient()
 
   const {
     data: { user: currentUser },
   } = await supabase.auth.getUser()
 
-  const { data: list } = await (supabase
+  // Use service client to read list data (works without auth for public lists / OG crawlers)
+  const { data: list } = await (serviceDb
     .from("lists")
     .select("*, users(*)")
     .eq("id", id)
@@ -54,7 +58,7 @@ export default async function ListDetailPage({ params }: ListPageProps) {
   const isOwner = currentUser?.id === typedList.user_id
   if (!typedList.is_public && !isOwner) notFound()
 
-  const { data: rawItems } = await (supabase
+  const { data: rawItems } = await (serviceDb
     .from("list_items")
     .select("*, games(*)")
     .eq("list_id", id)
