@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-// --- 1. DEFINE THE PIXEL GRIDS ---
 const singleHeartSrc = [
   ".XX...XX.",
   "XXXX.XXXX",
@@ -24,223 +23,225 @@ const textSrc = [
   "X...X .X. .XXXX X...X XXXX. .XXXX .XXX. X...X XXXXX"
 ];
 
-const CELL = 3; // Scaled down cell size for navbar
+const CELL = 3;
+const W = 180;
+const H = 40;
+const PIXEL = 2;
 
-interface Coords {
-  x: number;
-  y: number;
-  color?: string;
-  shadow?: string;
-  rx?: number;
-  ry?: number;
+interface Pt {
+  hx: number; hy: number;
+  tx: number; ty: number;
+  hasText: boolean;
+  // runtime
+  x: number; y: number;
+  color: string;
+  opacity: number;
+  scaleX: number;
+}
+
+function buildPixels(): Pt[] {
+  const heartCoords: { x: number; y: number }[] = [];
+  for (let h = 0; h < 3; h++) {
+    const ox = h * 13;
+    singleHeartSrc.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        if (row[x] === 'X') heartCoords.push({ x: x + ox, y });
+      }
+    });
+  }
+
+  const textGrid = textSrc.map(r => r.split(' ').join('.'));
+  const textCoords: { x: number; y: number }[] = [];
+  textGrid.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === 'X') textCoords.push({ x, y });
+    }
+  });
+
+  const cx = W / 2, cy = H / 2;
+  const hsx = cx - (35 * CELL) / 2, hsy = cy - (9 * CELL) / 2;
+  const tsx = cx - (51 * CELL) / 2, tsy = cy - (5 * CELL) / 2;
+
+  // Shuffle text coords
+  const shuffled = [...textCoords].sort(() => Math.random() - 0.5);
+
+  const total = Math.max(heartCoords.length, shuffled.length);
+  const pts: Pt[] = [];
+
+  for (let i = 0; i < total; i++) {
+    const hc = heartCoords[i];
+    const tc = shuffled[i];
+    pts.push({
+      hx: hc ? hsx + hc.x * CELL : cx,
+      hy: hc ? hsy + hc.y * CELL : cy,
+      tx: tc ? tsx + tc.x * CELL : cx,
+      ty: tc ? tsy + tc.y * CELL : cy,
+      hasText: !!tc,
+      x: cx, y: cy,
+      color: '#ff0055',
+      opacity: 0,
+      scaleX: 1,
+    });
+  }
+  return pts;
 }
 
 export function MorphLogo({ className }: { className?: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const layerRef = useRef<HTMLDivElement>(null);
-  const [pixelsData, setPixelsData] = useState<any[]>([]);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pixelsRef = useRef<Pt[]>([]);
+  const rafRef = useRef<number>(0);
+  const phaseRef = useRef<'idle' | 'to-hearts' | 'glitch' | 'to-text' | 'done'>('idle');
+  const phaseStartRef = useRef(0);
+  const isAnimatingRef = useRef(false);
 
-  useEffect(() => {
-    // --- 2. EXTRACT COORDINATES & COLORS ---
-    let heartCoords: Coords[] = [];
-    let textCoords: Coords[] = [];
-
-    // Red hearts
-    const heartColors = ['#ff0055', '#ff0055', '#ff0055'];
-
-    for (let h = 0; h < 3; h++) {
-      let offsetX = h * (9 + 4);
-      singleHeartSrc.forEach((row, y) => {
-        for (let x = 0; x < row.length; x++) {
-          if (row[x] === 'X') {
-            heartCoords.push({
-              x: x + offsetX,
-              y: y,
-              color: heartColors[h],
-              shadow: `0 0 4px ${heartColors[h]}`
-            });
-          }
-        }
-      });
+  const draw = useCallback(() => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, W * dpr, H * dpr);
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    for (const p of pixelsRef.current) {
+      if (p.opacity < 0.01) continue;
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, PIXEL * p.scaleX, PIXEL);
     }
-
-    const textGrid = textSrc.map(r => r.split(' ').join('.'));
-    textGrid.forEach((row, y) => {
-      for (let x = 0; x < row.length; x++) {
-        if (row[x] === 'X') {
-          textCoords.push({ x: x, y: y });
-        }
-      }
-    });
-
-    // --- 3. CALCULATE REAL SCREEN POSITIONS ---
-    const C_WIDTH = 180; // Scaled down width
-    const C_HEIGHT = 40; // Scaled down height
-    const CENTER_X = C_WIDTH / 2;
-    const CENTER_Y = C_HEIGHT / 2;
-
-    const hStartX = CENTER_X - (35 * CELL) / 2;
-    const hStartY = CENTER_Y - (9 * CELL) / 2;
-
-    const tStartX = CENTER_X - (51 * CELL) / 2;
-    const tStartY = CENTER_Y - (5 * CELL) / 2;
-
-    heartCoords = heartCoords.map(c => ({
-      ...c,
-      rx: hStartX + c.x * CELL,
-      ry: hStartY + c.y * CELL
-    }));
-
-    textCoords = textCoords.map(c => ({
-      ...c,
-      rx: tStartX + c.x * CELL,
-      ry: tStartY + c.y * CELL,
-      color: '#ff0055', // Red text instead of white
-      shadow: `0 0 6px rgba(255, 0, 85, 0.8)`
-    }));
-
-    textCoords.sort(() => Math.random() - 0.5);
-
-    const totalPixels = Math.max(heartCoords.length, textCoords.length);
-    const newPixelsData = [];
-
-    for (let i = 0; i < totalPixels; i++) {
-        const el = document.createElement('div');
-        el.className = 'absolute w-[2px] h-[2px] rounded-[1px]';
-        layerRef.current?.appendChild(el);
-
-        newPixelsData.push({
-          el: el,
-          hTarget: heartCoords[i],
-          tTarget: textCoords[i] || null,
-          scatter: {
-            x: (Math.random() - 0.5) * 150,
-            y: (Math.random() - 0.5) * 150
-          }
-        });
-    }
-    
-    setPixelsData(newPixelsData);
-
-    return () => {
-        if (layerRef.current) {
-            layerRef.current.innerHTML = '';
-        }
-    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }, []);
 
-  const setToHearts = (animate: boolean, pixels: any[]) => {
-    pixels.forEach(p => {
-      if (!animate) {
-        p.el.style.transition = 'none';
-      } else {
-        p.el.style.transition = `all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) ${Math.random() * 0.1}s`;
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+  const animate = useCallback((time: number) => {
+    const phase = phaseRef.current;
+    const elapsed = time - phaseStartRef.current;
+    const pts = pixelsRef.current;
+
+    if (phase === 'to-hearts') {
+      // Original: 0.5s CSS transition + 1.2s hold = ~1700ms total
+      const animDur = 500;
+      const holdDur = 1200;
+      const totalDur = animDur + holdDur;
+      const t = Math.min(elapsed / animDur, 1);
+      const e = easeOut(t);
+      for (const p of pts) {
+        p.x = lerp(p.x, p.hx, e * 0.3);
+        p.y = lerp(p.y, p.hy, e * 0.3);
+        p.opacity = Math.min(p.opacity + 0.08, 1);
+        p.color = '#ff0055';
+        p.scaleX = 1;
       }
-
-      if (p.hTarget) {
-          p.el.style.transform = `translate(${p.hTarget.rx}px, ${p.hTarget.ry}px) scale(1)`;
-          p.el.style.backgroundColor = p.hTarget.color;
-          p.el.style.boxShadow = p.hTarget.shadow;
-          p.el.style.opacity = '1';
+      if (t >= 1) {
+        for (const p of pts) { p.x = p.hx; p.y = p.hy; p.opacity = 1; }
       }
-    });
-  };
-
-  const setToText = (animate: boolean, pixels: any[]) => {
-    pixels.forEach(p => {
-      if (!animate) {
-        p.el.style.transition = 'none';
-      } else {
-        p.el.style.transition = `all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) ${Math.random() * 0.05}s`;
+      if (elapsed >= totalDur) {
+        phaseRef.current = 'glitch';
+        phaseStartRef.current = time;
       }
-
-      if (p.tTarget) {
-        p.el.style.transform = `translate(${p.tTarget.rx}px, ${p.tTarget.ry}px) scale(1)`;
-        p.el.style.backgroundColor = p.tTarget.color;
-        p.el.style.boxShadow = p.tTarget.shadow;
-        p.el.style.opacity = '1';
-      } else if (p.hTarget) {
-        p.el.style.transform = `translate(${p.hTarget.rx + p.scatter.x}px, ${p.hTarget.ry + p.scatter.y}px) scale(0)`;
-        p.el.style.opacity = '0';
+    } else if (phase === 'glitch') {
+      // Original: 7 flashes at 50ms = 350ms
+      const dur = 350;
+      const t = Math.min(elapsed / dur, 1);
+      for (const p of pts) {
+        const nx = (Math.random() - 0.5) * 40;
+        const ny = (Math.random() - 0.5) * 5;
+        const useText = Math.random() > 0.7 && p.hasText;
+        const bx = useText ? p.tx : p.hx;
+        const by = useText ? p.ty : p.hy;
+        p.x = bx + nx;
+        p.y = by + ny;
+        p.scaleX = Math.random() > 0.8 ? Math.random() * 4 + 1 : 1;
+        const r = Math.random();
+        p.color = r > 0.8 ? '#ff0055' : r > 0.4 ? '#ffffff' : '#ff0055';
+        p.opacity = Math.random() > 0.2 ? 1 : 0.2;
       }
-    });
-  };
-
-  const playSequence = () => {
-    if (isAnimating || pixelsData.length === 0) return;
-    setIsAnimating(true);
-
-    setToHearts(false, pixelsData);
-
-    setTimeout(() => {
-      setToHearts(true, pixelsData);
-
-      setTimeout(() => {
-        if (containerRef.current) containerRef.current.classList.add('animate-glitch');
-
-        let glitchFlashes = 0;
-        let glitchInterval = setInterval(() => {
-          pixelsData.forEach(p => {
-            p.el.style.transition = 'none';
-
-            const useTextTarget = Math.random() > 0.7 && p.tTarget;
-            const baseTarget = useTextTarget ? p.tTarget : p.hTarget;
-
-            if (baseTarget) {
-                const nx = (Math.random() - 0.5) * 40;
-                const ny = (Math.random() - 0.5) * 5;
-                const scaleX = Math.random() > 0.8 ? (Math.random() * 4 + 1) : 1;
-
-                p.el.style.transform = `translate(${baseTarget.rx + nx}px, ${baseTarget.ry + ny}px) scaleX(${scaleX})`;
-
-                const rColor = Math.random();
-                p.el.style.backgroundColor = rColor > 0.8 ? '#ff0055' : (rColor > 0.4 ? '#ffffff' : '#ff0055');
-                p.el.style.opacity = Math.random() > 0.2 ? '1' : '0.2';
-                p.el.style.boxShadow = 'none';
-            }
-          });
-
-          glitchFlashes++;
-          if (glitchFlashes > 6) {
-            clearInterval(glitchInterval);
-            if (containerRef.current) containerRef.current.classList.remove('animate-glitch');
-
-            setToText(true, pixelsData);
-
-            setTimeout(() => {
-              setIsAnimating(false);
-            }, 800);
+      if (t >= 1) {
+        phaseRef.current = 'to-text';
+        phaseStartRef.current = time;
+      }
+    } else if (phase === 'to-text') {
+      // Original: 0.4s CSS transition with spring easing + 0.8s settle
+      const dur = 800;
+      const t = Math.min(elapsed / dur, 1);
+      const e = easeOut(t);
+      for (const p of pts) {
+        if (p.hasText) {
+          p.x = lerp(p.x, p.tx, e * 0.15);
+          p.y = lerp(p.y, p.ty, e * 0.15);
+          p.opacity = Math.min(p.opacity + 0.04, 1);
+          p.color = '#ff0055';
+          p.scaleX = lerp(p.scaleX, 1, e * 0.2);
+        } else {
+          p.opacity = Math.max(p.opacity - 0.04, 0);
+        }
+      }
+      if (t >= 1) {
+        for (const p of pts) {
+          if (p.hasText) {
+            p.x = p.tx; p.y = p.ty; p.opacity = 1; p.color = '#ff0055'; p.scaleX = 1;
+          } else {
+            p.opacity = 0;
           }
-        }, 50);
+        }
+        phaseRef.current = 'done';
+        isAnimatingRef.current = false;
+      }
+    }
 
-      }, 1200);
+    draw();
 
-    }, 50);
-  };
+    if (phaseRef.current !== 'done' && phaseRef.current !== 'idle') {
+      rafRef.current = requestAnimationFrame(animate);
+    }
+  }, [draw]);
+
+  const play = useCallback(() => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
+
+    const pts = pixelsRef.current;
+    const cx = W / 2, cy = H / 2;
+
+    // scatter from center
+    for (const p of pts) {
+      p.x = cx + (Math.random() - 0.5) * 60;
+      p.y = cy + (Math.random() - 0.5) * 30;
+      p.opacity = 0;
+      p.scaleX = 1;
+      p.color = '#ff0055';
+    }
+
+    phaseRef.current = 'to-hearts';
+    phaseStartRef.current = performance.now();
+    rafRef.current = requestAnimationFrame(animate);
+  }, [animate]);
 
   useEffect(() => {
-    if (pixelsData.length > 0) {
-        playSequence();
-    }
-  }, [pixelsData]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
 
+    pixelsRef.current = buildPixels();
+    play();
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [play]);
 
   return (
-    <div 
-        className={cn("relative flex flex-col items-center justify-center", className)}
-        onMouseEnter={() => {
-            if (!isAnimating && pixelsData.length > 0) {
-                playSequence();
-            }
-        }}
+    <div
+      className={cn("relative flex flex-col items-center justify-center", className)}
+      onMouseEnter={play}
     >
-      <div 
-        id="logo-container" 
-        ref={containerRef}
-        className="relative w-[180px] h-[40px] cursor-pointer shrink-0"
-      >
-        <div ref={layerRef} className="absolute top-0 left-0 w-full h-full z-10" />
+      <div className="relative w-[180px] h-[40px] cursor-pointer shrink-0">
+        <canvas ref={canvasRef} className="absolute top-0 left-0" />
       </div>
     </div>
   );

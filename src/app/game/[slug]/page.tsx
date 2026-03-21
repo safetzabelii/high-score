@@ -134,10 +134,12 @@ export default async function GamePage({ params }: GamePageProps) {
     ? logs.find((l) => l.user_id === currentUser.id) ?? null
     : null
 
-  // ── Hero image from cached screenshots/artworks ────────────────
-  const screenshot = game.screenshots?.[0] || game.artworks?.[0]
+  // ── Hero image from cached screenshots — NEVER use artworks (they're logos) ──
+  // Prefer later screenshots (first is often a title screen)
+  const screenshots = game.screenshots ?? []
+  const screenshot = screenshots[2] || screenshots[1] || screenshots[0]
   const heroUrl = screenshot
-    ? screenshot.replace(/t_[a-z0-9_]+/, "t_screenshot_big")
+    ? screenshot.replace(/t_[a-z0-9_]+/, "t_1080p")
     : null
   const highResCover = game.cover_url
     ? game.cover_url.replace(/t_[a-z0-9_]+/, "t_720p")
@@ -352,6 +354,30 @@ export default async function GamePage({ params }: GamePageProps) {
                 <span className="text-[11px] uppercase tracking-wider">IGDB</span>
               </div>
             )}
+
+            {/* Where to Play */}
+            {game.stores && game.stores.length > 0 && (
+              <div className="mt-6">
+                <h3 className="section-heading mb-3">Where to Play</h3>
+                <div className="flex flex-wrap gap-2">
+                  {game.stores.map((store) => (
+                    <a
+                      key={store.name}
+                      href={store.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-lg bg-zinc-800/60 border border-zinc-700/40 px-3.5 py-2 text-[13px] text-zinc-300 hover:bg-zinc-700/60 hover:text-white hover:border-zinc-600 transition-all group"
+                    >
+                      <StoreIcon icon={store.icon} />
+                      <span className="font-medium">{store.name}</span>
+                      <svg className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -381,4 +407,46 @@ export default async function GamePage({ params }: GamePageProps) {
       </div>
     </div>
   )
+}
+
+function StoreIcon({ icon }: { icon: string }) {
+  const cls = "h-4 w-4 flex-shrink-0"
+  switch (icon) {
+    case "steam":
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.979 0C5.678 0 .511 4.86.022 10.935l6.432 2.658a3.387 3.387 0 0 1 1.912-.59c.064 0 .128.002.191.006l2.861-4.142V8.77c0-2.58 2.1-4.68 4.68-4.68 2.58 0 4.68 2.1 4.68 4.68s-2.1 4.682-4.68 4.682h-.109l-4.078 2.91c0 .048.003.097.003.146 0 1.94-1.577 3.516-3.516 3.516-1.694 0-3.112-1.2-3.44-2.795L.453 15.305A11.98 11.98 0 0 0 11.979 24c6.627 0 12-5.373 12-12S18.606 0 11.979 0z" />
+        </svg>
+      )
+    case "epic":
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3.537 0C2.165 0 1.66.506 1.66 1.879V22.12c0 1.374.504 1.88 1.877 1.88h16.926c1.374 0 1.877-.506 1.877-1.88V1.88C22.34.506 21.837 0 20.463 0H3.537zm6.166 5.72h4.587v1.297H11.01v2.594h3.28v1.296H11.01v2.594h3.28v1.297H9.703V5.72zm-4.464 0h1.307v7.781h3.28v1.297H5.24V5.72z" />
+        </svg>
+      )
+    case "gog":
+      return <span className={`${cls} text-[11px] font-bold flex items-center justify-center`}>GOG</span>
+    case "itch":
+      return <span className={`${cls} text-[11px] font-bold flex items-center justify-center`}>itch</span>
+    case "apple":
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+        </svg>
+      )
+    case "android":
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.523 15.341c-.583 0-1.054.471-1.054 1.054 0 .583.471 1.054 1.054 1.054.583 0 1.055-.471 1.055-1.054 0-.583-.472-1.054-1.055-1.054zm-11.046 0c-.583 0-1.054.471-1.054 1.054 0 .583.471 1.054 1.054 1.054.583 0 1.055-.471 1.055-1.054 0-.583-.472-1.054-1.055-1.054zM17.834 10.18l1.905-3.3a.397.397 0 0 0-.145-.542.397.397 0 0 0-.542.145l-1.929 3.341A11.724 11.724 0 0 0 12 8.82c-1.842 0-3.578.398-5.123 1.004L4.948 6.483a.397.397 0 0 0-.542-.145.397.397 0 0 0-.145.542l1.905 3.3C2.879 12.09.5 15.483.5 19.411h23c0-3.928-2.379-7.321-5.666-9.231z" />
+        </svg>
+      )
+    case "playstation":
+      return <span className={`${cls} text-[10px] font-bold flex items-center justify-center`}>PS</span>
+    case "nintendo":
+      return <span className={`${cls} text-[10px] font-bold flex items-center justify-center`}>NS</span>
+    case "xbox":
+      return <span className={`${cls} text-[10px] font-bold flex items-center justify-center`}>XB</span>
+    default:
+      return <span className="text-sm">🌐</span>
+  }
 }

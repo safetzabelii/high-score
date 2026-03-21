@@ -45,6 +45,9 @@ export interface DiscoverGame {
   release_year: number | null
   rating?: number | null
   developer?: string | null
+  summary?: string | null
+  genres?: string[]
+  screenshot_url?: string | null
 }
 
 // Cache TTL: 30 minutes
@@ -66,8 +69,8 @@ const GENRE_IDS: Record<string, number> = {
   arcade: 33,
 }
 
-function shapeForDiscover(g: ShapedGame): DiscoverGame {
-  return {
+function shapeForDiscover(g: ShapedGame, includeMeta = false): DiscoverGame {
+  const base: DiscoverGame = {
     id: g.id,
     title: g.title,
     slug: g.slug,
@@ -76,6 +79,14 @@ function shapeForDiscover(g: ShapedGame): DiscoverGame {
     rating: g.rating,
     developer: g.developer,
   }
+  if (includeMeta) {
+    base.summary = g.summary
+    base.genres = g.genres
+    // Pick a gameplay screenshot (skip first — often title screen)
+    const ss = g.screenshots
+    base.screenshot_url = ss?.[2] || ss?.[1] || ss?.[0] || null
+  }
+  return base
 }
 
 /**
@@ -89,7 +100,7 @@ export async function getDiscoverData(): Promise<DiscoverCategories> {
   const { data: cached } = await supabase
     .from('page_cache')
     .select('data, fetched_at')
-    .eq('page_key', 'discover')
+    .eq('page_key', 'discover_v3')
     .single()
 
   if (cached) {
@@ -195,7 +206,7 @@ async function fetchAndCacheDiscover(
   const community = await getCommunityGames(supabase)
 
   const categories: DiscoverCategories = {
-    featured: featuredRaw.map(shapeGame).map(shapeForDiscover),
+    featured: featuredRaw.map(shapeGame).map(g => shapeForDiscover(g, true)),
     popular: popularRaw.map(shapeGame).map(shapeForDiscover),
     recent: recentRaw.map(shapeGame).map(shapeForDiscover),
     anticipated: anticipatedRaw.map(shapeGame).map(shapeForDiscover),
@@ -220,7 +231,7 @@ async function fetchAndCacheDiscover(
     .from('page_cache')
     .upsert(
       {
-        page_key: 'discover',
+        page_key: 'discover_v3',
         data: categories as any,
         fetched_at: new Date().toISOString(),
       },

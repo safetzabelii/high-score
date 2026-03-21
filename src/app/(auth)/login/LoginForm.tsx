@@ -55,7 +55,7 @@ export function LoginForm() {
           }}
         />
         {/* Mobile: full darken */}
-        <div className="lg:hidden absolute inset-0 bg-zinc-950/75 backdrop-blur-sm z-[1]" />
+        <div className="lg:hidden absolute inset-0 bg-zinc-950/80 z-[1]" />
       </div>
 
       {/* ═══ Content layer ═══ */}

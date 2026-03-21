@@ -2,7 +2,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import Image from "next/image"
 
 interface BackdropGame {
   name: string
@@ -14,6 +13,7 @@ interface BackdropGame {
 /**
  * Self-fetching backdrop — loads game images client-side
  * so the page shell renders instantly without blocking on any API.
+ * Uses a plain <img> with low quality to keep the page lightweight.
  */
 export function AuthBackdrop() {
   const [games, setGames] = useState<BackdropGame[]>([])
@@ -41,6 +41,7 @@ export function AuthBackdrop() {
       const next = (active + 1) % games.length
       setActive(next)
       setDisplayIdx(next)
+      setLoaded(false)
       setPhase("fading-in")
 
       timerRef.current = setTimeout(() => {
@@ -67,34 +68,20 @@ export function AuthBackdrop() {
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-zinc-950">
-      {/* Single image — clean sequential transition */}
-      <div
-        className="absolute inset-0 saturate-[0.2] transition-opacity duration-[800ms] ease-in-out"
+      {/* Single image — plain img tag, no Next/Image overhead, grayscale via CSS */}
+      <img
+        src={current.screenshot_url}
+        alt=""
+        onLoad={() => setLoaded(true)}
+        className="absolute inset-0 w-full h-full object-cover grayscale transition-opacity duration-[800ms] ease-in-out"
         style={{ opacity }}
-      >
-        <Image
-          src={current.screenshot_url}
-          alt=""
-          fill
-          className="object-cover scale-[1.03] auth-drift"
-          priority
-          onLoad={() => setLoaded(true)}
-        />
-      </div>
-
-      {/* Film grain */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.025] mix-blend-overlay"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
-          backgroundRepeat: "repeat",
-          backgroundSize: "128px 128px",
-        }}
+        loading="lazy"
+        decoding="async"
       />
 
       {/* ── Game info — bottom left ── */}
       <div className="absolute bottom-0 left-0 p-8 z-10 max-w-[50%]">
-        <div key={current.name} className="auth-content-pop">
+        <div key={current.name} className="animate-[authPop_0.4s_ease-out_both]">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5">
             {current.year && current.year >= new Date().getFullYear() ? "Upcoming" : "Now Playing"}
           </p>
@@ -115,6 +102,7 @@ export function AuthBackdrop() {
                     setTimeout(() => {
                       setActive(i)
                       setDisplayIdx(i)
+                      setLoaded(false)
                       setPhase("fading-in")
                       setTimeout(() => setPhase("visible"), 800)
                     }, 800)
@@ -138,16 +126,6 @@ export function AuthBackdrop() {
       </div>
 
       <style>{`
-        .auth-drift {
-          animation: authDrift 20s ease-in-out infinite alternate;
-        }
-        @keyframes authDrift {
-          0% { transform: scale(1.03); }
-          100% { transform: scale(1.07) translate(-0.5%, -0.3%); }
-        }
-        .auth-content-pop {
-          animation: authPop 0.4s ease-out both;
-        }
         @keyframes authPop {
           from { opacity: 0; transform: translateY(6px); }
           to { opacity: 1; transform: translateY(0); }

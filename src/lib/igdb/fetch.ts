@@ -38,6 +38,8 @@ export interface IgdbGame {
   involved_companies?: { company: { name: string }; developer: boolean; publisher: boolean }[]
   artworks?: { url: string }[]
   screenshots?: { url: string }[]
+  websites?: { url: string; type: number }[]
+  external_games?: { external_game_source: number; uid: string; url?: string }[]
   version_parent?: number
   parent_game?: number
   // Relation arrays — present when explicitly requested
@@ -95,6 +97,8 @@ const GAME_FIELDS = `
     involved_companies.publisher,
     artworks.url,
     screenshots.url,
+    websites.url, websites.type,
+    external_games.external_game_source, external_games.uid, external_games.url,
     version_parent, parent_game;
 `.trim()
 
@@ -173,13 +177,13 @@ offset ${offset};`
 }
 
 export async function getFeaturedGames(limit = 5, offset = 0): Promise<IgdbGame[]> {
-  // To simulate "Featured & Recommended" we want very high hype or extremely popular recent games
+  // Recent popular games from the last 6 months — not all-time
   const now = Math.floor(Date.now() / 1000)
   const sixMonthsAgo = now - (180 * 24 * 60 * 60)
   return igdbFetch<IgdbGame[]>(
     'games',
     `${GAME_FIELDS}
-where rating_count > 100 & cover != null & screenshots != null;
+where first_release_date > ${sixMonthsAgo} & first_release_date < ${now} & rating_count > 20 & cover != null & screenshots != null;
 sort rating_count desc;
 limit ${limit};
 offset ${offset};`
@@ -348,6 +352,7 @@ export interface ShapedGame {
   publisher: string | null
   artworks: string[]
   screenshots: string[]
+  stores: { name: string; url: string; icon: string }[]
 }
 
 // Platforms to exclude (discontinued services)
@@ -377,6 +382,26 @@ const PLATFORM_NORMALIZE: Record<string, string> = {
   'Switch 2': 'Switch 2',
 }
 
+// IGDB website category → store info (for websites field)
+// IGDB websites.type → store info (type values from IGDB API)
+const WEBSITE_STORE_MAP: Record<number, { name: string; icon: string }> = {
+  13: { name: 'Steam', icon: 'steam' },
+  16: { name: 'Epic Games', icon: 'epic' },
+  17: { name: 'GOG', icon: 'gog' },
+  15: { name: 'itch.io', icon: 'itch' },
+  22: { name: 'Xbox Store', icon: 'xbox' },
+  23: { name: 'PlayStation Store', icon: 'playstation' },
+  24: { name: 'Nintendo eShop', icon: 'nintendo' },
+}
+
+// IGDB external_games.external_game_source → store info (used as fallback when websites don't have it)
+const EXTERNAL_STORE_MAP: Record<number, { name: string; icon: string }> = {
+  1:  { name: 'Steam', icon: 'steam' },
+  5:  { name: 'GOG', icon: 'gog' },
+  11: { name: 'Xbox Store', icon: 'xbox' },
+  36: { name: 'PlayStation Store', icon: 'playstation' },
+}
+
 export function shapeGame(g: IgdbGame): ShapedGame {
   const developer =
     g.involved_companies?.find((c) => c.developer)?.company.name ?? null
@@ -391,6 +416,28 @@ export function shapeGame(g: IgdbGame): ShapedGame {
 
   // Filter out discontinued platforms
   const platforms = rawPlatforms.filter(p => !EXCLUDED_PLATFORMS.has(p))
+
+  // Extract store links from websites + external_games
+  const stores: { name: string; url: string; icon: string }[] = []
+  const seenStores = new Set<string>()
+
+  // 1. From websites (has direct URLs — preferred source)
+  for (const w of g.websites ?? []) {
+    const info = WEBSITE_STORE_MAP[w.type]
+    if (info && !seenStores.has(info.name)) {
+      seenStores.add(info.name)
+      stores.push({ name: info.name, url: w.url, icon: info.icon })
+    }
+  }
+
+  // 2. From external_games (fallback — has URLs for stores not in websites)
+  for (const ext of g.external_games ?? []) {
+    const info = EXTERNAL_STORE_MAP[ext.external_game_source]
+    if (info && !seenStores.has(info.name) && ext.url) {
+      seenStores.add(info.name)
+      stores.push({ name: info.name, url: ext.url, icon: info.icon })
+    }
+  }
 
   return {
     id: g.id,
@@ -409,6 +456,7 @@ export function shapeGame(g: IgdbGame): ShapedGame {
     publisher,
     artworks: g.artworks?.map((a) => 'https:' + a.url.replace(/t_[a-z0-9_]+/, 't_720p')) ?? [],
     screenshots: g.screenshots?.map((s) => 'https:' + s.url.replace(/t_[a-z0-9_]+/, 't_720p')) ?? [],
+    stores,
   }
 }
 
@@ -455,6 +503,13 @@ export async function getCachedGameBySlug(slug: string): Promise<ShapedGame | nu
     const age = Date.now() - new Date(cached.fetched_at).getTime()
     const isReleased = gameData.release_year && gameData.release_year <= new Date().getFullYear()
     const ttl = isReleased ? CACHE_TTL_RELEASED : CACHE_TTL_UNRELEASED
+
+    // If cached data predates the stores fix (no stores field at all), fetch fresh
+    if (!gameData.stores) {
+      const fresh = await fetchAndCacheGame(slug, supabase)
+      if (fresh) return fresh
+      return gameData // fallback to stale if IGDB fails
+    }
 
     if (age < ttl) {
       return gameData // Cache hit — instant response

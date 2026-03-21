@@ -142,7 +142,7 @@ export default function Navbar() {
   const showLoading = loading || authTransitioning;
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-700">
+    <nav className="sticky top-0 z-50 w-full bg-zinc-950 border-b border-zinc-700">
       <div className="mx-auto flex h-[72px] max-w-[960px] items-center justify-between px-4">
         {/* Left: Logo + Nav Links */}
         <div className="flex items-center gap-6">

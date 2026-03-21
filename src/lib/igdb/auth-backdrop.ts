@@ -23,7 +23,7 @@ export async function getAuthBackdropGames(): Promise<BackdropGame[]> {
   const { data: cached } = await supabase
     .from('page_cache')
     .select('data, fetched_at')
-    .eq('page_key', 'auth_backdrop_v2')
+    .eq('page_key', 'auth_backdrop_v4')
     .single()
 
   if (cached) {
@@ -52,16 +52,16 @@ async function refreshBackdrop(): Promise<BackdropGame[]> {
       igdbFetch<any[]>(
         'games',
         `fields name, cover.url, screenshots.url, artworks.url, first_release_date;
-where first_release_date > ${start2025} & first_release_date < ${now} & rating_count > 10 & screenshots != null & cover != null;
+where first_release_date > ${start2025} & first_release_date < ${now} & rating_count > 50 & screenshots != null & cover != null;
 sort rating_count desc;
-limit 10;`
+limit 12;`
       ).catch(() => []),
       igdbFetch<any[]>(
         'games',
         `fields name, cover.url, screenshots.url, artworks.url, first_release_date;
-where first_release_date > ${now} & hypes > 3 & (screenshots != null | artworks != null) & cover != null;
+where first_release_date > ${now} & hypes > 20 & screenshots != null & cover != null;
 sort hypes desc;
-limit 10;`
+limit 12;`
       ).catch(() => []),
     ])
 
@@ -75,12 +75,20 @@ limit 10;`
 
     const backdrop: BackdropGame[] = []
     for (const g of all) {
-      const artUrl = g.artworks?.[0]?.url || g.screenshots?.[0]?.url
+      // ONLY use screenshots (gameplay images), NEVER artworks (logos/key art)
+      const screenshots = g.screenshots ?? []
+      if (screenshots.length === 0) continue
+      // Skip 1st screenshot (often title screen), use 2nd+ if available
+      const bestScreenshot = screenshots.length > 2
+        ? screenshots[2]?.url
+        : screenshots.length > 1
+          ? screenshots[1]?.url
+          : screenshots[0]?.url
       const coverRaw = g.cover?.url
-      if (artUrl && g.name) {
+      if (bestScreenshot && g.name) {
         backdrop.push({
           name: g.name,
-          screenshot_url: 'https:' + artUrl.replace(/t_[a-z0-9_]+/, 't_1080p'),
+          screenshot_url: 'https:' + bestScreenshot.replace(/t_[a-z0-9_]+/, 't_720p'),
           cover_url: coverRaw ? 'https:' + coverRaw.replace(/t_[a-z0-9_]+/, 't_cover_big') : null,
           year: g.first_release_date
             ? new Date(g.first_release_date * 1000).getFullYear()
@@ -94,11 +102,11 @@ limit 10;`
     supabase
       .from('page_cache')
       .upsert(
-        { page_key: 'auth_backdrop_v2', data: backdrop as any, fetched_at: new Date().toISOString() },
+        { page_key: 'auth_backdrop_v4', data: backdrop as any, fetched_at: new Date().toISOString() },
         { onConflict: 'page_key' }
       )
       .then(({ error }) => {
-        if (error) console.error('[auth_backdrop_v2]', error.message)
+        if (error) console.error('[auth_backdrop_v4]', error.message)
       })
 
     return backdrop
