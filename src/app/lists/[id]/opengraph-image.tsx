@@ -7,6 +7,19 @@ export const alt = 'List details'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { next: { revalidate: 86400 } })
+    if (!res.ok) return null
+    const buffer = await res.arrayBuffer()
+    const base64 = Buffer.from(buffer).toString('base64')
+    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    return `data:${contentType};base64,${base64}`
+  } catch {
+    return null
+  }
+}
+
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -17,25 +30,16 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     .eq('id', id)
     .single() as any)
 
-  if (!list) {
+  if (!list || !(list as ListRow).is_public) {
     return new ImageResponse(
-      <div style={{ display: 'flex', width: '100%', height: '100%', background: '#09090b', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 40 }}>
-        List not found
+      <div style={{ display: 'flex', width: '100%', height: '100%', background: '#09090b', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: 32 }}>
+        {!list ? 'List not found' : 'This list is private'}
       </div>,
       { ...size }
     )
   }
 
   const typedList = list as ListRow & { users: UserRow }
-
-  if (!typedList.is_public) {
-    return new ImageResponse(
-      <div style={{ display: 'flex', width: '100%', height: '100%', background: '#09090b', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: 32 }}>
-        This list is private
-      </div>,
-      { ...size }
-    )
-  }
 
   const { data: items } = await (supabase
     .from('list_items')
@@ -51,10 +55,14 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     .select('*', { count: 'exact', head: true })
     .eq('list_id', id) as any)
 
-  const covers = gameItems
-    .filter((item): item is typeof item & { games: GameRow & { cover_url: string } } => !!item.games?.cover_url)
-    .map(item => item.games.cover_url)
+  // Pre-fetch cover images as base64 data URIs (Satori can't always fetch external URLs on Vercel)
+  const coverUrls = gameItems
+    .filter(item => !!item.games?.cover_url)
+    .map(item => item.games.cover_url!)
     .slice(0, 4)
+
+  const coverDataUris = await Promise.all(coverUrls.map(fetchImageAsBase64))
+  const covers = coverDataUris.filter((uri): uri is string => uri !== null)
 
   return new ImageResponse(
     <div
@@ -67,39 +75,32 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       }}
     >
       {/* Left side — game covers grid */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          width: '340px',
-          gap: '8px',
-          alignContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        {covers.map((url, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              width: covers.length <= 1 ? '200px' : '162px',
-              height: covers.length <= 1 ? '280px' : '230px',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-          >
+      {covers.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            width: '340px',
+            gap: '8px',
+            alignContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {covers.map((dataUri, i) => (
             <img
-              src={url}
+              key={i}
+              src={dataUri}
               width={covers.length <= 1 ? 200 : 162}
               height={covers.length <= 1 ? 280 : 230}
               style={{
+                borderRadius: '8px',
                 objectFit: 'cover',
+                border: '1px solid rgba(255,255,255,0.1)',
               }}
             />
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Right side — info */}
       <div
@@ -108,7 +109,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           flexDirection: 'column',
           justifyContent: 'center',
           flex: 1,
-          paddingLeft: '40px',
+          paddingLeft: covers.length > 0 ? '40px' : '0',
           gap: '16px',
         }}
       >
