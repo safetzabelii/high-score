@@ -28,7 +28,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
 
   const typedList = list as ListRow & { users: UserRow }
 
-  // Don't generate OG for private lists
   if (!typedList.is_public) {
     return new ImageResponse(
       <div style={{ display: 'flex', width: '100%', height: '100%', background: '#09090b', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: 32 }}>
@@ -43,11 +42,10 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     .select('*, games(*)')
     .eq('list_id', id)
     .order('position', { ascending: true })
-    .limit(8) as any)
+    .limit(6) as any)
 
   const gameItems = (items ?? []) as (ListItemRow & { games: GameRow })[]
 
-  // Get total count
   const { count: totalGames } = await (supabase
     .from('list_items')
     .select('*', { count: 'exact', head: true })
@@ -56,6 +54,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const covers = gameItems
     .filter((item): item is typeof item & { games: GameRow & { cover_url: string } } => !!item.games?.cover_url)
     .map(item => item.games.cover_url)
+    .slice(0, 4)
 
   return new ImageResponse(
     <div
@@ -64,212 +63,141 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         width: '100%',
         height: '100%',
         background: '#09090b',
-        position: 'relative',
-        overflow: 'hidden',
+        padding: '48px',
       }}
     >
-      {/* Background — faded game covers grid */}
+      {/* Left side — game covers grid */}
       <div
         style={{
           display: 'flex',
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          width: '100%',
-          height: '100%',
-          opacity: 0.08,
+          flexWrap: 'wrap',
+          width: '340px',
+          gap: '8px',
+          alignContent: 'center',
+          flexShrink: 0,
         }}
       >
-        {covers.slice(0, 6).map((url, i) => (
-          <img
+        {covers.map((url, i) => (
+          <div
             key={i}
-            src={url}
             style={{
-              width: `${100 / Math.min(covers.length, 6)}%`,
-              height: '100%',
-              objectFit: 'cover',
+              display: 'flex',
+              width: covers.length <= 1 ? '200px' : '162px',
+              height: covers.length <= 1 ? '280px' : '230px',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.1)',
             }}
-          />
+          >
+            <img
+              src={url}
+              width={covers.length <= 1 ? 200 : 162}
+              height={covers.length <= 1 ? 280 : 230}
+              style={{
+                objectFit: 'cover',
+              }}
+            />
+          </div>
         ))}
       </div>
 
-      {/* Content */}
+      {/* Right side — info */}
       <div
         style={{
           display: 'flex',
-          width: '100%',
-          height: '100%',
-          padding: '48px',
-          position: 'relative',
-          gap: '40px',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          flex: 1,
+          paddingLeft: '40px',
+          gap: '16px',
         }}
       >
-        {/* Game covers stack */}
-        <div
-          style={{
-            display: 'flex',
-            flexShrink: 0,
-            width: '320px',
-            height: '100%',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-          }}
-        >
-          {covers.slice(0, 5).map((url, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                position: 'absolute',
-                left: `${i * 52}px`,
-                top: '50%',
-                transform: `translateY(-50%)`,
-                width: '140px',
-                height: '200px',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.7)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                zIndex: 5 - i,
-              }}
-            >
-              <img
-                src={url}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-              />
-            </div>
-          ))}
+        {/* List badge */}
+        <div style={{ display: 'flex' }}>
+          <div
+            style={{
+              display: 'flex',
+              padding: '4px 14px',
+              borderRadius: '6px',
+              background: 'rgba(255,0,85,0.15)',
+              border: '1px solid rgba(255,0,85,0.3)',
+              fontSize: 14,
+              fontWeight: 700,
+              color: '#ff0055',
+              letterSpacing: '0.1em',
+            }}
+          >
+            LIST
+          </div>
         </div>
 
-        {/* Info */}
+        {/* Title */}
         <div
           style={{
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            flex: 1,
-            gap: '16px',
-            minWidth: 0,
+            fontSize: typedList.title.length > 35 ? 38 : 48,
+            fontWeight: 700,
+            color: '#ffffff',
+            lineHeight: 1.15,
           }}
         >
-          {/* List label */}
+          {typedList.title}
+        </div>
+
+        {/* Description */}
+        {typedList.description && (
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+              fontSize: 18,
+              color: '#a1a1aa',
+              lineHeight: 1.4,
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                padding: '4px 12px',
-                borderRadius: '6px',
-                background: 'rgba(255,0,85,0.15)',
-                border: '1px solid rgba(255,0,85,0.3)',
-                fontSize: 14,
-                fontWeight: 700,
-                color: '#ff0055',
-                letterSpacing: '0.1em',
-              }}
-            >
-              LIST
-            </div>
+            {typedList.description.length > 120
+              ? typedList.description.slice(0, 120) + '...'
+              : typedList.description}
           </div>
+        )}
 
-          {/* Title */}
-          <div
-            style={{
-              display: 'flex',
-              fontSize: typedList.title.length > 35 ? 38 : 48,
-              fontWeight: 700,
-              color: '#ffffff',
-              lineHeight: 1.15,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {typedList.title}
+        {/* Stats row */}
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center', marginTop: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: 28, fontWeight: 700, color: '#ffffff' }}>{totalGames ?? 0}</span>
+            <span style={{ fontSize: 16, color: '#71717a' }}>game{(totalGames ?? 0) !== 1 ? 's' : ''}</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: 16, color: '#a1a1aa' }}>by {typedList.users.username}</span>
+          </div>
+        </div>
 
-          {/* Description */}
-          {typedList.description && (
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 18,
-                color: '#a1a1aa',
-                lineHeight: 1.4,
-              }}
-            >
-              {typedList.description.length > 120
-                ? typedList.description.slice(0, 120) + '...'
-                : typedList.description}
-            </div>
-          )}
-
-          {/* Stats */}
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'center', marginTop: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#ffffff' }}>{totalGames ?? 0}</span>
-              <span style={{ fontSize: 16, color: '#71717a' }}>game{(totalGames ?? 0) !== 1 ? 's' : ''}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Game names */}
+        {gameItems.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+            {gameItems.slice(0, 4).map((item, i) => (
               <div
+                key={i}
                 style={{
                   display: 'flex',
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: '#27272a',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  fontSize: 15,
+                  color: '#71717a',
+                  gap: '8px',
                 }}
               >
-                {typedList.users.avatar_url ? (
-                  <img src={typedList.users.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ fontSize: 14, color: '#a1a1aa' }}>{typedList.users.username?.[0]?.toUpperCase() ?? '?'}</span>
-                )}
+                <span style={{ color: '#52525b', fontWeight: 600 }}>{i + 1}.</span>
+                <span>{item.games?.title ?? 'Unknown'}</span>
               </div>
-              <span style={{ fontSize: 16, color: '#a1a1aa' }}>by {typedList.users.username}</span>
-            </div>
+            ))}
+            {(totalGames ?? 0) > 4 && (
+              <div style={{ display: 'flex', fontSize: 14, color: '#52525b', paddingLeft: '20px' }}>
+                +{(totalGames ?? 0) - 4} more
+              </div>
+            )}
           </div>
-
-          {/* Game names preview */}
-          {gameItems.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-              {gameItems.slice(0, 4).map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    fontSize: 15,
-                    color: '#71717a',
-                    gap: '8px',
-                  }}
-                >
-                  <span style={{ color: '#52525b', fontWeight: 600, minWidth: '18px' }}>{i + 1}.</span>
-                  <span>{item.games?.title ?? 'Unknown'}</span>
-                </div>
-              ))}
-              {(totalGames ?? 0) > 4 && (
-                <span style={{ fontSize: 14, color: '#52525b', marginLeft: '26px' }}>
-                  +{(totalGames ?? 0) - 4} more
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Bottom bar */}
+      {/* Bottom branding */}
       <div
         style={{
           display: 'flex',
@@ -289,8 +217,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         <span style={{ color: '#52525b', fontSize: 14 }}>Track your games. Share your taste.</span>
       </div>
     </div>,
-    {
-      ...size,
-    }
+    { ...size }
   )
 }
