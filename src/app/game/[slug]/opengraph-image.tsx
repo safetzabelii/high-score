@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { getCachedGameBySlug } from '@/lib/igdb/fetch'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export const runtime = 'nodejs'
 export const alt = 'Game details'
@@ -19,23 +19,34 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     )
   }
 
-  // Fetch community stats
-  const supabase = await createClient()
-  const { count: logCount } = await (supabase
-    .from('game_logs')
-    .select('*', { count: 'exact', head: true })
-    .eq('game_id', game.id) as any)
+  // Fetch community stats (service client bypasses RLS for unauthenticated requests)
+  const supabase = createServiceClient()
 
-  const { data: ratingLogs } = await (supabase
-    .from('game_logs')
-    .select('rating')
-    .eq('game_id', game.id)
-    .gt('rating', 0) as any)
+  let logCount: number | null = null
+  let avgRating: number | null = null
+  let ratingCount = 0
 
-  const ratings = (ratingLogs ?? []) as { rating: number }[]
-  const avgRating = ratings.length > 0
-    ? Math.round((ratings.reduce((s, l) => s + l.rating, 0) / ratings.length) * 10) / 10
-    : null
+  try {
+    const { count } = await (supabase
+      .from('game_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('game_id', game.id) as any)
+    logCount = count
+
+    const { data: ratingLogs } = await (supabase
+      .from('game_logs')
+      .select('rating')
+      .eq('game_id', game.id)
+      .gt('rating', 0) as any)
+
+    const ratings = (ratingLogs ?? []) as { rating: number }[]
+    ratingCount = ratings.length
+    if (ratings.length > 0) {
+      avgRating = Math.round((ratings.reduce((s, l) => s + l.rating, 0) / ratings.length) * 10) / 10
+    }
+  } catch {
+    // RLS may block reads without service role key — stats will be omitted
+  }
 
   const coverUrl = game.cover_url
     ? game.cover_url.replace(/t_[a-z0-9_]+/, 't_cover_big')
@@ -234,7 +245,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   <span style={{ fontSize: 18, color: '#ffffff', fontWeight: 600 }}>{avgRating}</span>
-                  <span style={{ fontSize: 13, color: '#52525b' }}>{ratings.length} rating{ratings.length !== 1 ? 's' : ''}</span>
+                  <span style={{ fontSize: 13, color: '#52525b' }}>{ratingCount} rating{ratingCount !== 1 ? 's' : ''}</span>
                 </div>
               </div>
             )}

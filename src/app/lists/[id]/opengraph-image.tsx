@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import type { ListRow, ListItemRow, UserRow, GameRow } from '@/types/database'
 
 export const runtime = 'nodejs'
@@ -22,7 +22,7 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
 
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data: list } = await (supabase
     .from('lists')
