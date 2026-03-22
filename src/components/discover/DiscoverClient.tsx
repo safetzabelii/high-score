@@ -180,7 +180,7 @@ function FilterSelect<T extends string>({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="appearance-none bg-zinc-800/80 border border-zinc-700/50 text-zinc-300 text-[13px] rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-[#ff0055]/30 focus:border-[#ff0055]/50 cursor-pointer hover:border-zinc-600 transition-colors"
+        className="appearance-none bg-zinc-800/80 border border-zinc-700/50 text-zinc-300 text-[12px] sm:text-[13px] rounded-lg pl-2.5 sm:pl-3 pr-7 sm:pr-8 py-1.5 sm:py-2 focus:outline-none focus:ring-1 focus:ring-[#ff0055]/30 focus:border-[#ff0055]/50 cursor-pointer hover:border-zinc-600 transition-colors"
       >
         {options.map((opt) => (
           <option key={opt.key} value={opt.key}>{opt.label}</option>
@@ -501,7 +501,7 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
             <section className="mb-14">
               <SectionHeading title="FEATURED & RECOMMENDED" />
 
-              <div className="relative h-[320px] sm:h-[380px] w-full rounded-lg overflow-hidden">
+              <div className="relative h-[240px] sm:h-[320px] md:h-[380px] w-full rounded-lg overflow-hidden">
                 {featured.map((game, i) => {
                   const bgImg = game.screenshot_url || game.cover_url
                   return (
@@ -528,10 +528,10 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-zinc-950/40" />
 
                       {/* Content overlay — left-aligned */}
-                      <div className="absolute inset-0 flex items-end p-6 sm:p-8">
-                        <div className="flex gap-5 items-end max-w-[75%]">
+                      <div className="absolute inset-0 flex items-end p-4 sm:p-6 md:p-8">
+                        <div className="flex gap-3 sm:gap-5 items-end max-w-[85%] sm:max-w-[75%]">
                           {/* Cover art */}
-                          <Link href={`/game/${game.slug}`} className="relative w-[100px] sm:w-[120px] aspect-[3/4] flex-shrink-0 rounded overflow-hidden ring-1 ring-white/10 hover:ring-[#ff0055]/50 transition-all">
+                          <Link href={`/game/${game.slug}`} className="relative w-[72px] sm:w-[100px] md:w-[120px] aspect-[3/4] flex-shrink-0 rounded overflow-hidden ring-1 ring-white/10 hover:ring-[#ff0055]/50 transition-all">
                             {game.cover_url && (
                               <Image
                                 src={game.cover_url}
@@ -553,7 +553,7 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
                               ))}
                             </div>
 
-                            <h3 className="text-xl sm:text-2xl font-bold text-white leading-tight mb-1.5">
+                            <h3 className="text-base sm:text-xl md:text-2xl font-bold text-white leading-tight mb-1 sm:mb-1.5">
                               <Link href={`/game/${game.slug}`} className="hover:text-[#ff0055] transition-colors">
                                 {game.title}
                               </Link>

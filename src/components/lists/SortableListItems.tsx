@@ -142,8 +142,8 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <RemoveListItem itemId={item.id} />
                 </div>
-                <div className="absolute bottom-[calc(100%-28px)] right-2 opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
-                  <GripVertical className="h-4 w-4 text-zinc-300" />
+                <div className="absolute top-9 left-2 opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none z-10">
+                  <GripVertical className="h-4 w-4 text-zinc-300 drop-shadow" />
                 </div>
               </>
             )}

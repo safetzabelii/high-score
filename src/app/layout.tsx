@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { Inter, JetBrains_Mono, DM_Serif_Display } from 'next/font/google'
 import { Toaster } from 'sonner'
 import Navbar from '../components/navbar'
@@ -44,7 +45,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} ${dmSerif.variable} font-sans bg-zinc-950 text-zinc-100 antialiased`}>
         <NavigationProgress />
-        <Navbar />
+        <Suspense><Navbar /></Suspense>
         <main className="min-h-[calc(100vh-4.5rem)]">{children}</main>
         <Toaster
           richColors

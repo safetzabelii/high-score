@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { LogOut, User as UserIcon, Loader2, Search, Settings, List, Clock, BarChart3, Gamepad2, Heart, Layers } from "lucide-react";
+import { LogOut, User as UserIcon, Loader2, Search, Settings, List, Clock, BarChart3, Gamepad2, Heart, Layers, Menu, X as XIcon, GitCompareArrows } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,12 @@ import { cn } from "@/lib/utils";
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState<string>("Gamer");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Auth transition state — only used on login/signup pages
   const [authTransitioning, setAuthTransitioning] = useState(false);
@@ -139,14 +141,32 @@ export default function Navbar() {
     { href: "/search?tab=users", label: "MEMBERS" },
   ];
 
+  // Check if a nav link is active, accounting for query params
+  const isNavActive = (href: string) => {
+    const [linkPath, linkQuery] = href.split("?")
+    if (pathname !== linkPath) return false
+    if (!linkQuery) return true
+    // If link has query params, check they match
+    const params = new URLSearchParams(linkQuery)
+    for (const [key, value] of params) {
+      if (searchParams.get(key) !== value) return false
+    }
+    return true
+  }
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   const showLoading = loading || authTransitioning;
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-zinc-950 border-b border-zinc-700">
-      <div className="mx-auto flex h-[72px] max-w-[960px] items-center justify-between px-4">
+      <div className="mx-auto flex h-14 sm:h-[72px] max-w-[960px] items-center justify-between px-4">
         {/* Left: Logo + Nav Links */}
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2.5 group mr-4">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link href="/" className="flex items-center gap-2.5 group sm:mr-4">
             <MorphLogo />
           </Link>
 
@@ -158,7 +178,7 @@ export default function Navbar() {
                 href={link.href}
                 className={cn(
                   "text-[11px] font-bold tracking-[0.1em] px-2.5 py-1.5 transition-colors",
-                  pathname === link.href || (link.href === "/search" && pathname === "/search")
+                  isNavActive(link.href)
                     ? "text-zinc-50"
                     : "text-zinc-400 hover:text-zinc-100"
                 )}
@@ -170,7 +190,7 @@ export default function Navbar() {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {showLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />
           ) : user ? (
@@ -248,6 +268,12 @@ export default function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer px-3 text-zinc-300 hover:text-zinc-50">
+                    <Link href="/compare">
+                      <GitCompareArrows className="mr-2.5 h-3.5 w-3.5 text-zinc-500" />
+                      Compare
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer px-3 text-zinc-300 hover:text-zinc-50">
                     <Link href="/settings">
                       <Settings className="mr-2.5 h-3.5 w-3.5 text-zinc-500" />
                       Settings
@@ -261,11 +287,23 @@ export default function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* +LOG green button */}
-              <LogGameButton />
+              {/* +LOG green button — hidden on small mobile */}
+              <div className="hidden sm:block">
+                <LogGameButton />
+              </div>
+
+              {/* Mobile hamburger */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="flex md:hidden h-8 w-8 items-center justify-center rounded text-zinc-400 hover:text-zinc-100 transition-colors"
+                aria-label="Menu"
+              >
+                {mobileMenuOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
             </>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
                 href="/search"
                 className="flex h-8 w-8 items-center justify-center rounded text-zinc-400 hover:text-zinc-100 transition-colors"
@@ -273,16 +311,62 @@ export default function Navbar() {
               >
                 <Search className="h-[18px] w-[18px]" />
               </Link>
-              <Button asChild variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-100 text-[11px] font-bold tracking-[0.1em] uppercase">
+              <Button asChild variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-100 text-[11px] font-bold tracking-[0.1em] uppercase px-2 sm:px-3">
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button asChild size="sm" className="bg-hs-green-button text-white hover:bg-hs-green-hover text-[11px] font-bold tracking-[0.05em] uppercase rounded-sm">
+              <Button asChild size="sm" className="bg-hs-green-button text-white hover:bg-hs-green-hover text-[11px] font-bold tracking-[0.05em] uppercase rounded-sm hidden sm:inline-flex">
                 <Link href="/signup">Create account</Link>
               </Button>
+
+              {/* Mobile hamburger for logged-out users */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="flex md:hidden h-8 w-8 items-center justify-center rounded text-zinc-400 hover:text-zinc-100 transition-colors"
+                aria-label="Menu"
+              >
+                {mobileMenuOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Mobile menu panel */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-zinc-800 bg-zinc-950">
+          <div className="mx-auto max-w-[960px] px-4 py-3 space-y-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "block py-2.5 px-3 rounded text-[13px] font-bold tracking-[0.05em] transition-colors",
+                  isNavActive(link.href)
+                    ? "text-zinc-50 bg-zinc-800/50"
+                    : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/30"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+            {/* Show +LOG on mobile menu for logged-in users */}
+            {user && (
+              <div className="pt-2 sm:hidden">
+                <LogGameButton />
+              </div>
+            )}
+            {/* Show Create account on mobile menu for logged-out users */}
+            {!user && (
+              <div className="pt-2 sm:hidden">
+                <Button asChild size="sm" className="w-full bg-hs-green-button text-white hover:bg-hs-green-hover text-[11px] font-bold tracking-[0.05em] uppercase rounded-sm">
+                  <Link href="/signup">Create account</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

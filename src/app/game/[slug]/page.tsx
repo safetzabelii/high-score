@@ -180,7 +180,7 @@ export default async function GamePage({ params }: GamePageProps) {
   return (
     <div className="min-h-screen">
       {/* ─── Hero Backdrop — Letterboxd-style ────────────────── */}
-      <div className="relative h-64 sm:h-80 lg:h-96 overflow-hidden">
+      <div className="relative h-44 sm:h-80 lg:h-96 overflow-hidden">
         {heroUrl ? (
           <Image
             src={heroUrl}
@@ -196,10 +196,10 @@ export default async function GamePage({ params }: GamePageProps) {
       </div>
 
       {/* ─── Content — two-column Letterboxd layout ──────────── */}
-      <div className="relative -mt-32 mx-auto max-w-[960px] px-4 pb-16">
-        <div className="flex flex-col sm:flex-row gap-8">
+      <div className="relative -mt-20 sm:-mt-32 mx-auto max-w-[960px] px-4 pb-16">
+        <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
           {/* LEFT: Cover + Stats */}
-          <div className="flex-shrink-0 w-[230px]">
+          <div className="flex-shrink-0 w-full sm:w-[230px] max-w-[230px] mx-auto sm:mx-0">
             {/* Cover poster */}
             <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[3px] border border-zinc-700/30 shadow-2xl bg-zinc-900">
               {highResCover ? (
@@ -283,7 +283,7 @@ export default async function GamePage({ params }: GamePageProps) {
           </div>
 
           {/* RIGHT: Game info + reviews */}
-          <div className="flex-1 min-w-0 pt-4 sm:pt-32">
+          <div className="flex-1 min-w-0 pt-2 sm:pt-32">
             {/* Title — serif */}
             <h1 className="font-serif text-3xl sm:text-[32px] font-bold text-zinc-50 leading-tight">
               {game.title}

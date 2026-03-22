@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Search, Loader2, X, Gamepad2, Heart, User as UserIcon } from "lucide-react"
 import { useGameSearch, type GameSearchResult } from "@/hooks/useGameSearch"
 import { useUserSearch } from "@/hooks/useUserSearch"
@@ -11,7 +12,17 @@ import { cn } from "@/lib/utils"
 type Tab = "games" | "users"
 
 export default function SearchPage() {
-  const [tab, setTab] = useState<Tab>("games")
+  return (
+    <Suspense>
+      <SearchPageInner />
+    </Suspense>
+  )
+}
+
+function SearchPageInner() {
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get("tab") === "users" ? "users" : "games"
+  const [tab, setTab] = useState<Tab>(initialTab)
   const gameSearch = useGameSearch(400)
   const userSearch = useUserSearch(400)
 

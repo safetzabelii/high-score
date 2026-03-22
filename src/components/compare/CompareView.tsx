@@ -121,7 +121,7 @@ export function CompareView({
           ) : (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_80px_80px] gap-2 px-4 py-2 border-b border-zinc-800 text-xs text-zinc-500">
+              <div className="grid grid-cols-[1fr_60px_60px] sm:grid-cols-[1fr_80px_80px] gap-2 px-4 py-2 border-b border-zinc-800 text-xs text-zinc-500">
                 <span>Game</span>
                 <span className="text-center">You</span>
                 <span className="text-center">{comparison.otherUser.display_name.split(" ")[0]}</span>
@@ -138,7 +138,7 @@ export function CompareView({
                   return (
                     <div
                       key={game.game_id}
-                      className="grid grid-cols-[1fr_80px_80px] gap-2 px-4 py-2.5 items-center hover:bg-zinc-800/30 transition-colors"
+                      className="grid grid-cols-[1fr_60px_60px] sm:grid-cols-[1fr_80px_80px] gap-2 px-4 py-2.5 items-center hover:bg-zinc-800/30 transition-colors"
                     >
                       <Link
                         href={`/game/${game.slug}`}

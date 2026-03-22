@@ -169,7 +169,7 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8">
           {sorted.map((log) => {
             const game = log.games
             if (!game) return null
@@ -206,13 +206,13 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
                   <div className="flex items-center gap-[1px] mt-1 justify-center">
                     {Array.from({ length: Math.floor(log.rating) }).map((_, i) => (
                       <svg key={i} viewBox="0 0 24 24" className="h-[10px] w-[10px]">
-                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.42 4.42 3 8.5 3c1.74 0 3.41.81 4.5 2.09C14.09 3.81 15.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#4a4a52" />
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.42 4.42 3 8.5 3c1.74 0 3.41.81 4.5 2.09C14.09 3.81 15.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#ff0055" />
                       </svg>
                     ))}
                     {log.rating % 1 >= 0.5 && (
                       <svg viewBox="0 0 24 24" className="h-[10px] w-[10px]">
                         <clipPath id={`hh-${log.id}`}><rect x="0" y="0" width="12" height="24" /></clipPath>
-                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.42 4.42 3 8.5 3c1.74 0 3.41.81 4.5 2.09C14.09 3.81 15.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#4a4a52" clipPath={`url(#hh-${log.id})`} />
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.42 4.42 3 8.5 3c1.74 0 3.41.81 4.5 2.09C14.09 3.81 15.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#ff0055" clipPath={`url(#hh-${log.id})`} />
                       </svg>
                     )}
                   </div>

@@ -142,8 +142,8 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen">
       {/* ─── Welcome — Letterboxd serif italic ───────────────── */}
-      <div className="mx-auto max-w-[960px] px-4 pt-10 pb-6">
-        <p className="font-serif text-xl text-zinc-300 italic">
+      <div className="mx-auto max-w-[960px] px-4 pt-6 sm:pt-10 pb-4 sm:pb-6">
+        <p className="font-serif text-base sm:text-xl text-zinc-300 italic">
           Welcome back, <span className="font-bold not-italic text-zinc-50">{displayName}</span>.
           {" "}Here&apos;s what your friends have been playing...
         </p>
@@ -172,8 +172,8 @@ export default async function HomePage() {
         {/* ─── Popular This Week — grid ──────────────────────── */}
         {popularGames.length > 0 && (
           <section className="pb-8">
-            <SectionHeading title="Popular this week" moreHref="/search" />
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-1.5">
+            <SectionHeading title="Popular this week" moreHref="/discover" />
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
               {popularGames.slice(0, 8).map((game) => (
                 <GameCover
                   key={game.id}
@@ -281,7 +281,7 @@ export default async function HomePage() {
           <aside className="w-full lg:w-[230px] flex-shrink-0 space-y-6">
             {profile && (
               <div>
-                <div className="flex items-center justify-between text-center">
+                <div className="flex items-center gap-5 text-center">
                   <Link href={`/profile/${profile.username}`} className="group">
                     <p className="text-lg font-semibold text-zinc-100 group-hover:text-hs-blue transition-colors tabular-nums">{logCount}</p>
                     <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Games</p>

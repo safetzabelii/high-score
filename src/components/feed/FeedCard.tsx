@@ -154,7 +154,7 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
 
       {/* Comments — full width below entire card, aligned with content */}
       {commentsOpen && (
-        <div className="mt-3 ml-[82px]">
+        <div className="mt-3 sm:ml-[82px]">
           <CommentSection
             logId={entry.id}
             logOwnerId={entry.user_id}

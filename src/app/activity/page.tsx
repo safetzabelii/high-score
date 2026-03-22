@@ -98,7 +98,7 @@ export default async function ActivityPage() {
         <div className="space-y-8">
           {Array.from(grouped.entries()).map(([day, items]) => (
             <div key={day}>
-              <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 sticky top-16 bg-zinc-950 py-1 z-10">
+              <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3 sticky top-14 sm:top-[72px] bg-zinc-950 py-1 z-10">
                 {day}
               </h2>
               <div className="space-y-2">

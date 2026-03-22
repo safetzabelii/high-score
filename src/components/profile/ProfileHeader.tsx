@@ -81,31 +81,31 @@ export function ProfileHeader({
 
         </div>
 
-        {/* Stats + Ratings chart — right-aligned */}
-        <div className="flex items-start gap-6 flex-shrink-0">
-          <div className="flex items-center gap-6">
+        {/* Stats + Ratings chart */}
+        <div className="flex items-start gap-4 sm:gap-6 flex-shrink-0 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-4 sm:gap-6">
             <div className="text-center">
-              <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.gamesLogged}</p>
+              <p className="text-lg sm:text-xl font-semibold text-zinc-100 tabular-nums">{stats.gamesLogged}</p>
               <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Games</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.following}</p>
+              <p className="text-lg sm:text-xl font-semibold text-zinc-100 tabular-nums">{stats.following}</p>
               <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Following</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-semibold text-zinc-100 tabular-nums">{stats.followers}</p>
+              <p className="text-lg sm:text-xl font-semibold text-zinc-100 tabular-nums">{stats.followers}</p>
               <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Followers</p>
             </div>
           </div>
 
           {/* Rating distribution — compact sidebar chart */}
           {totalRated > 0 && (
-            <div className="border-l border-zinc-800 pl-5">
+            <div className="sm:border-l sm:border-zinc-800 sm:pl-5 w-full sm:w-auto">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Ratings</span>
                 <span className="text-[10px] text-zinc-600 tabular-nums">{totalRated}</span>
               </div>
-              <div className="flex items-end gap-[2px] h-10 w-40">
+              <div className="flex items-end gap-[2px] h-10 w-full sm:w-40">
                 {distEntries.map(([rating, count]) => (
                   <div key={rating} className="flex-1 flex items-end h-full">
                     <div

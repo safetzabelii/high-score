@@ -362,7 +362,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
   const modalContent = (
     <div
       style={{ position: "fixed", inset: 0, zIndex: 9999 }}
-      className="flex items-center justify-center p-4"
+      className="flex items-end sm:items-center justify-center sm:p-4"
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
       <div
@@ -372,12 +372,12 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
       />
 
       <div className={cn(
-        "relative w-full max-w-lg rounded-sm border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/80",
-        step === 2 ? "max-h-[90vh] overflow-y-auto" : ""
+        "relative w-full max-w-lg rounded-t-xl sm:rounded-sm border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/80",
+        step === 2 ? "max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" : "max-h-[80vh] overflow-y-auto"
       )}>
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 sm:px-6 py-4">
           <div className="flex items-center gap-2">
             {step === 2 && !preselectedGame && !isEditMode && (
               <button type="button" onClick={() => { setStep(1); setGame(null); setBaseGame(null); setEditions([]); setSelectedEdition(null); lastFetchedEditionIdRef.current = null; resetForm(); setIsEditing(false) }}
@@ -399,7 +399,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
 
         {/* Step 1 — Search */}
         {step === 1 && (
-          <div className="p-6 pb-64">
+          <div className="p-4 sm:p-6 pb-64">
             <p className="mb-4 text-sm text-zinc-400">Search for the game you want to log.</p>
             <GameSearchCombobox onSelect={handleGameSelect} />
           </div>
@@ -416,7 +416,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
         {/* Step 2 — Form */}
         {step === 2 && game && !fetchingExisting && (
           <form onSubmit={handleSubmit}>
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5">
 
               {/* Game header */}
               <div className="flex items-center gap-4">
@@ -609,7 +609,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
             </div>
 
             {/* Footer */}
-            <div className="border-t border-zinc-800 px-6 py-4 flex items-center justify-between">
+            <div className="border-t border-zinc-800 px-4 sm:px-6 py-4 flex items-center justify-between">
               <div>
                 {isEditing && (
                   <button type="button" onClick={handleDelete} disabled={isLoading}

@@ -130,7 +130,7 @@ export default async function NotificationsPage() {
                             {" "}for{" "}
                             <Link
                               href={`/game/${game.slug}`}
-                              className="font-medium text-hs-green hover:text-hs-green"
+                              className="font-medium text-hs-green hover:text-emerald-300"
                             >
                               {game.title}
                             </Link>
@@ -145,7 +145,7 @@ export default async function NotificationsPage() {
                             {" "}for{" "}
                             <Link
                               href={`/game/${game.slug}`}
-                              className="font-medium text-hs-green hover:text-hs-green"
+                              className="font-medium text-hs-green hover:text-emerald-300"
                             >
                               {game.title}
                             </Link>
