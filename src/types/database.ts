@@ -1,5 +1,5 @@
 
-export type GameStatus = 'played' | 'playing' | 'backlog' | 'abandoned'
+export type GameStatus = 'played' | 'playing' | 'backlog' | 'wishlist' | 'completed' | 'abandoned'
 
 
 export interface UserRow {
@@ -71,6 +71,14 @@ export interface CommentRow {
   log_id: string
   user_id: string
   text: string
+  created_at: string
+}
+
+export interface FavoriteGameRow {
+  id: string
+  user_id: string
+  game_id: number
+  position: number
   created_at: string
 }
 
@@ -169,6 +177,11 @@ export interface Database {
         Row: CommentRow
         Insert: Omit<CommentRow, 'id' | 'created_at'>
         Update: Partial<Pick<CommentRow, 'text'>>
+      }
+      favorite_games: {
+        Row: FavoriteGameRow
+        Insert: Omit<FavoriteGameRow, 'id' | 'created_at'>
+        Update: Partial<Pick<FavoriteGameRow, 'position'>>
       }
     }
     Views: {

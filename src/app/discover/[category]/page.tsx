@@ -13,10 +13,11 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
 }
 
 const validCategories = [
-  "popular", "recent", "anticipated", "topRated", 
-  "rpgs", "indies", "shooters", "adventure", 
+  "popular", "recent", "anticipated", "topRated",
+  "hiddenGems", "comingSoon",
+  "rpgs", "indies", "shooters", "adventure",
   "strategy", "platformers", "community",
-  "fighting", "racing", "sports", "simulators", 
+  "fighting", "racing", "sports", "simulators",
   "puzzle", "arcade"
 ]
 

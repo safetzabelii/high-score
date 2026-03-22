@@ -6,7 +6,7 @@ import Image from "next/image"
 import {
   X, ChevronLeft, Clock, AlertTriangle, Loader2,
   Pencil, Check, CheckCircle2, Gamepad2, BookmarkPlus, XCircle,
-  Layers, ChevronRight
+  Layers, ChevronRight, Trophy
 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -15,7 +15,7 @@ import { GameSearchCombobox } from "@/components/shared/GameSearchComboBox"
 import { StarRating } from "@/components/shared/StarRating"
 import { cn } from "@/lib/utils"
 
-type GameStatus = "played" | "playing" | "backlog" | "abandoned"
+type GameStatus = "played" | "playing" | "backlog" | "wishlist" | "completed" | "abandoned"
 
 export interface GameSearchResult {
   objectID?: string
@@ -83,6 +83,12 @@ const STATUS_OPTIONS: {
     label: "Backlog",
     icon: <BookmarkPlus className="h-4 w-4 flex-shrink-0" />,
     activeClass: "border-hs-green bg-hs-green/10 text-hs-green",
+  },
+  {
+    value: "completed",
+    label: "Completed",
+    icon: <Trophy className="h-4 w-4 flex-shrink-0" />,
+    activeClass: "border-amber-500 bg-amber-500/10 text-amber-400",
   },
   {
     value: "abandoned",
@@ -533,11 +539,11 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
               {/* Status */}
               <div className="space-y-2">
                 <FieldLabel>Status</FieldLabel>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-wrap gap-2">
                   {STATUS_OPTIONS.map((opt) => (
                     <button key={opt.value} type="button" onClick={() => setStatus(opt.value)}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-sm border px-3 py-2.5 text-sm transition-all",
+                        "flex items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-all",
                         status === opt.value
                           ? opt.activeClass
                           : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"

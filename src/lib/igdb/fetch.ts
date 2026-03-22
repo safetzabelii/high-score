@@ -40,6 +40,8 @@ export interface IgdbGame {
   screenshots?: { url: string }[]
   websites?: { url: string; type: number }[]
   external_games?: { external_game_source: number; uid: string; url?: string }[]
+  collection?: { id: number; name: string }
+  franchises?: { id: number; name: string }[]
   version_parent?: number
   parent_game?: number
   // Relation arrays — present when explicitly requested
@@ -99,6 +101,7 @@ const GAME_FIELDS = `
     screenshots.url,
     websites.url, websites.type,
     external_games.external_game_source, external_games.uid, external_games.url,
+    collection.name, franchises.name,
     version_parent, parent_game;
 `.trim()
 
@@ -226,6 +229,30 @@ offset ${offset};`
   )
 }
 
+export async function getHiddenGems(limit = 20, offset = 0): Promise<IgdbGame[]> {
+  return igdbFetch<IgdbGame[]>(
+    'games',
+    `${GAME_FIELDS}
+where rating_count > 100 & rating_count < 500 & rating > 82 & cover != null;
+sort rating desc;
+limit ${limit};
+offset ${offset};`
+  )
+}
+
+export async function getComingSoon(limit = 10, offset = 0): Promise<IgdbGame[]> {
+  const now = Math.floor(Date.now() / 1000)
+  const oneYearFromNow = now + (365 * 24 * 60 * 60)
+  return igdbFetch<IgdbGame[]>(
+    'games',
+    `${GAME_FIELDS}
+where first_release_date > ${now} & first_release_date < ${oneYearFromNow} & cover != null & hypes > 15;
+sort hypes desc;
+limit ${limit};
+offset ${offset};`
+  )
+}
+
 export async function getGamesByGenre(genreId: number, limit = 20, offset = 0): Promise<IgdbGame[]> {
   // genres = [genreId] specifies EXACT match, genres = (genreId) specifies "contains".
   return igdbFetch<IgdbGame[]>(
@@ -233,6 +260,92 @@ export async function getGamesByGenre(genreId: number, limit = 20, offset = 0): 
     `${GAME_FIELDS}
 where genres = (${genreId}) & rating_count > 50 & rating > 70 & cover != null;
 sort rating_count desc;
+limit ${limit};
+offset ${offset};`
+  )
+}
+
+// Genre ID mapping for IGDB
+export const IGDB_GENRE_IDS: Record<string, number> = {
+  rpgs: 12, indies: 32, shooters: 5, adventure: 31,
+  strategy: 15, platformers: 8, fighting: 4, racing: 10,
+  sports: 14, simulators: 13, puzzle: 9, arcade: 33,
+}
+
+// Platform ID mapping for IGDB
+export const IGDB_PLATFORM_IDS: Record<string, string> = {
+  pc: "6",
+  ps5: "167",
+  ps4: "48",
+  xsx: "169",
+  xone: "49",
+  switch: "130",
+  mobile: "34,39",  // iOS + Android
+}
+
+export interface FilterParams {
+  genre?: string
+  year?: string
+  rating?: string
+  platform?: string
+  sort?: string
+  limit?: number
+  offset?: number
+}
+
+export async function getFilteredGames(filters: FilterParams): Promise<IgdbGame[]> {
+  const conditions: string[] = ["cover != null", "rating_count > 5"]
+  let sortClause = "sort rating_count desc"
+
+  // Genre filter
+  if (filters.genre && filters.genre !== "all" && IGDB_GENRE_IDS[filters.genre]) {
+    conditions.push(`genres = (${IGDB_GENRE_IDS[filters.genre]})`)
+  }
+
+  // Year filter
+  if (filters.year && filters.year !== "all") {
+    const now = Math.floor(Date.now() / 1000)
+    switch (filters.year) {
+      case "2026": conditions.push("first_release_date >= 1767225600 & first_release_date < 1798761600"); break
+      case "2025": conditions.push("first_release_date >= 1735689600 & first_release_date < 1767225600"); break
+      case "2024": conditions.push("first_release_date >= 1704067200 & first_release_date < 1735689600"); break
+      case "2023": conditions.push("first_release_date >= 1672531200 & first_release_date < 1704067200"); break
+      case "2020s": conditions.push("first_release_date >= 1577836800 & first_release_date < 1672531200"); break
+      case "2010s": conditions.push("first_release_date >= 1262304000 & first_release_date < 1577836800"); break
+      case "2000s": conditions.push("first_release_date >= 946684800 & first_release_date < 1262304000"); break
+      case "classic": conditions.push(`first_release_date < 946684800`); break
+    }
+  }
+
+  // Rating filter
+  if (filters.rating && filters.rating !== "all") {
+    const minRating = parseFloat(filters.rating) * 10 // IGDB uses 0-100 scale
+    conditions.push(`rating >= ${minRating}`)
+  }
+
+  // Platform filter
+  if (filters.platform && filters.platform !== "all" && IGDB_PLATFORM_IDS[filters.platform]) {
+    const platformIds = IGDB_PLATFORM_IDS[filters.platform]
+    conditions.push(`platforms = (${platformIds})`)
+  }
+
+  // Sort
+  switch (filters.sort) {
+    case "rating": sortClause = "sort rating desc"; break
+    case "newest": sortClause = "sort first_release_date desc"; break
+    case "name": sortClause = "sort name asc"; break
+    case "popular":
+    default: sortClause = "sort rating_count desc"; break
+  }
+
+  const limit = filters.limit ?? 30
+  const offset = filters.offset ?? 0
+
+  return igdbFetch<IgdbGame[]>(
+    'games',
+    `${GAME_FIELDS}
+where ${conditions.join(" & ")};
+${sortClause};
 limit ${limit};
 offset ${offset};`
   )
@@ -353,6 +466,8 @@ export interface ShapedGame {
   artworks: string[]
   screenshots: string[]
   stores: { name: string; url: string; icon: string }[]
+  collection: { id: number; name: string } | null
+  franchise: { id: number; name: string } | null
 }
 
 // Platforms to exclude (discontinued services)
@@ -457,6 +572,61 @@ export function shapeGame(g: IgdbGame): ShapedGame {
     artworks: g.artworks?.map((a) => 'https:' + a.url.replace(/t_[a-z0-9_]+/, 't_720p')) ?? [],
     screenshots: g.screenshots?.map((s) => 'https:' + s.url.replace(/t_[a-z0-9_]+/, 't_720p')) ?? [],
     stores,
+    collection: g.collection ? { id: g.collection.id, name: g.collection.name } : null,
+    franchise: g.franchises?.[0] ? { id: g.franchises[0].id, name: g.franchises[0].name } : null,
+  }
+}
+
+export interface SeriesGame {
+  id: number
+  title: string
+  slug: string
+  cover_url: string | null
+  release_year: number | null
+}
+
+export async function getSeriesGames(collectionId: number | null, franchiseId: number | null, excludeId: number): Promise<{ games: SeriesGame[]; seriesName: string | null }> {
+  // Prefer collection (more specific), fall back to franchise
+  const id = collectionId ?? franchiseId
+  if (!id) return { games: [], seriesName: null }
+
+  const endpoint = collectionId ? 'collections' : 'franchises'
+
+  // First get the collection/franchise name and game IDs
+  const result = await igdbFetch<{ id: number; name: string; games: number[] }[]>(
+    endpoint,
+    `fields name, games;
+where id = ${id};
+limit 1;`
+  )
+
+  if (!result[0] || !result[0].games?.length) return { games: [], seriesName: null }
+
+  const seriesName = result[0].name
+  const gameIds = result[0].games.filter(gid => gid !== excludeId).slice(0, 20)
+
+  if (gameIds.length === 0) return { games: [], seriesName }
+
+  // Fetch the actual game data
+  const games = await igdbFetch<IgdbGame[]>(
+    'games',
+    `fields id, name, slug, cover.url, first_release_date;
+where id = (${gameIds.join(',')}) & cover != null;
+sort first_release_date asc;
+limit 20;`
+  )
+
+  return {
+    seriesName,
+    games: games.map(g => ({
+      id: g.id,
+      title: g.name,
+      slug: g.slug,
+      cover_url: largeCover(g.cover?.url),
+      release_year: g.first_release_date
+        ? new Date(g.first_release_date * 1000).getFullYear()
+        : null,
+    })),
   }
 }
 
@@ -504,8 +674,8 @@ export async function getCachedGameBySlug(slug: string): Promise<ShapedGame | nu
     const isReleased = gameData.release_year && gameData.release_year <= new Date().getFullYear()
     const ttl = isReleased ? CACHE_TTL_RELEASED : CACHE_TTL_UNRELEASED
 
-    // If cached data predates the stores fix (no stores field at all), fetch fresh
-    if (!gameData.stores) {
+    // If cached data predates schema additions (stores, collection/franchise), fetch fresh
+    if (!gameData.stores || !('collection' in gameData)) {
       const fresh = await fetchAndCacheGame(slug, supabase)
       if (fresh) return fresh
       return gameData // fallback to stale if IGDB fails

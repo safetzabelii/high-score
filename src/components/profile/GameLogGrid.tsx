@@ -46,7 +46,9 @@ const STATUS_TABS: { value: GameStatus | null; label: string }[] = [
   { value: null,        label: "All" },
   { value: "played",    label: "Played" },
   { value: "playing",   label: "Playing" },
+  { value: "completed", label: "Completed" },
   { value: "backlog",   label: "Backlog" },
+  { value: "wishlist",  label: "Wishlist" },
   { value: "abandoned", label: "Shelved" },
 ]
 

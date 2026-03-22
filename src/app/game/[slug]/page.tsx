@@ -10,7 +10,8 @@ import { getCachedGameBySlug, coverUrl } from "@/lib/igdb/fetch"
 import { syncGameToAlgolia } from "@/lib/igdb/algolia/client"
 import { createClient } from "@/lib/supabase/server"
 import { GamePageActions } from "@/components/game/GamePageActions"
-import { ReviewCard } from "@/components/game/ReviewCard"
+import { GameSeries } from "@/components/game/GameSeries"
+import { ReviewSection } from "@/components/game/ReviewSection"
 import type { UserRow, GameLogRow } from "@/types/database"
 
 
@@ -96,8 +97,14 @@ export default async function GamePage({ params }: GamePageProps) {
 
   const reviewIds = reviews.map((r) => r.id)
 
-  // ── Parallel: likes, user likes, comment counts ────────────────
-  const [likeCountsRes, userLikesRes, commentCountsRes] = await Promise.all([
+  // ── Status breakdown for engagement metrics ──────────────────
+  const statusCounts: Record<string, number> = { played: 0, playing: 0, completed: 0, backlog: 0, wishlist: 0, abandoned: 0 }
+  for (const l of logs) {
+    statusCounts[l.status] = (statusCounts[l.status] ?? 0) + 1
+  }
+
+  // ── Parallel: likes, user likes, comment counts, lists featuring ──
+  const [likeCountsRes, userLikesRes, commentCountsRes, listsFeaturingRes] = await Promise.all([
     supabase
       .from("likes")
       .select("log_id")
@@ -113,6 +120,11 @@ export default async function GamePage({ params }: GamePageProps) {
       .from("comments")
       .select("log_id")
       .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any,
+    (supabase
+      .from("list_items")
+      .select("list_id, lists(id, title, user_id, users(username, display_name))")
+      .eq("game_id", game.id)
+      .limit(6) as any),
   ])
 
   const likeCountMap = new Map<string, number>()
@@ -128,6 +140,33 @@ export default async function GamePage({ params }: GamePageProps) {
   for (const c of (commentCountsRes.data ?? []) as { log_id: string }[]) {
     commentCountMap.set(c.log_id, (commentCountMap.get(c.log_id) ?? 0) + 1)
   }
+
+  // Process lists featuring this game
+  type ListFeaturing = {
+    list_id: string
+    lists: {
+      id: string
+      title: string
+      user_id: string
+      users: { username: string; display_name: string }
+    } | null
+  }
+  const listsFeaturingRaw = (listsFeaturingRes.data ?? []) as ListFeaturing[]
+  const listsFeaturing = listsFeaturingRaw
+    .filter((item) => item.lists?.users)
+    .map((item) => ({
+      id: item.lists!.id,
+      title: item.lists!.title,
+      username: item.lists!.users.username,
+      displayName: item.lists!.users.display_name,
+    }))
+  // Deduplicate by list id
+  const seenListIds = new Set<string>()
+  const uniqueLists = listsFeaturing.filter((l) => {
+    if (seenListIds.has(l.id)) return false
+    seenListIds.add(l.id)
+    return true
+  })
 
   const currentUserLog = currentUser
     ? logs.find((l) => l.user_id === currentUser.id) ?? null
@@ -217,19 +256,23 @@ export default async function GamePage({ params }: GamePageProps) {
               )}
             </div>
 
-            {/* Stats bar — icon counts */}
-            <div className="flex items-center justify-between mt-3 text-[11px] text-zinc-500">
-              <span className="flex items-center gap-1">
-                <Eye className="h-3.5 w-3.5" />
-                {logs.length}
+            {/* Engagement metrics — status breakdown */}
+            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+              <span className="flex items-center gap-1.5 text-zinc-400">
+                <Eye className="h-3 w-3 text-zinc-500" />
+                <span className="tabular-nums font-medium">{(statusCounts.played || 0) + (statusCounts.completed || 0)}</span> Played
               </span>
-              <span className="flex items-center gap-1">
-                <Heart className="h-3.5 w-3.5" />
-                {ratingsOnly.length}
+              <span className="flex items-center gap-1.5 text-zinc-400">
+                <Gamepad2 className="h-3 w-3 text-emerald-500/70" />
+                <span className="tabular-nums font-medium">{statusCounts.playing || 0}</span> Playing
               </span>
-              <span className="flex items-center gap-1">
-                <ListIcon className="h-3.5 w-3.5" />
-                {reviews.length}
+              <span className="flex items-center gap-1.5 text-zinc-400">
+                <ListIcon className="h-3 w-3 text-zinc-500" />
+                <span className="tabular-nums font-medium">{(statusCounts.backlog || 0) + (statusCounts.wishlist || 0)}</span> Backlog
+              </span>
+              <span className="flex items-center gap-1.5 text-zinc-400">
+                <Heart className="h-3 w-3 text-zinc-500" />
+                <span className="tabular-nums font-medium">{ratingsOnly.length}</span> Rated
               </span>
             </div>
 
@@ -239,6 +282,8 @@ export default async function GamePage({ params }: GamePageProps) {
                 <GamePageActions
                   game={gameForModal}
                   existingLog={existingLogForModal}
+                  isWishlisted={currentUserLog?.status === "wishlist"}
+                  gameId={game.id}
                 />
               ) : (
                 <Link
@@ -380,6 +425,43 @@ export default async function GamePage({ params }: GamePageProps) {
           </div>
         </div>
 
+        {/* ─── Featured in Lists ──────────────────────────────── */}
+        {uniqueLists.length > 0 && (
+          <div className="mt-12">
+            <SectionHeading title="Featured in lists" />
+            <div className="grid gap-2 sm:grid-cols-2">
+              {uniqueLists.map((list) => (
+                <Link
+                  key={list.id}
+                  href={`/lists/${list.id}`}
+                  className="flex items-center gap-3 rounded-lg border border-zinc-800/60 bg-zinc-900/40 px-4 py-3 hover:border-zinc-700 transition-colors group"
+                >
+                  <ListIcon className="h-4 w-4 text-zinc-600 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-zinc-200 group-hover:text-zinc-50 truncate transition-colors">
+                      {list.title}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 truncate">
+                      by {list.displayName || list.username}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Game Series / Franchise ─────────────────────────── */}
+        {(game.collection || game.franchise) && (
+          <div className="mt-12">
+            <GameSeries
+              gameId={game.id}
+              collectionId={game.collection?.id ?? null}
+              franchiseId={game.franchise?.id ?? null}
+            />
+          </div>
+        )}
+
         {/* ─── Community Reviews ─────────────────────────────── */}
         <div className="mt-12">
           <SectionHeading title={`Community Reviews${reviews.length > 0 ? ` (${reviews.length})` : ""}`} />
@@ -389,18 +471,13 @@ export default async function GamePage({ params }: GamePageProps) {
               No reviews yet. Be the first to share your thoughts!
             </p>
           ) : (
-            <div>
-              {reviews.map((review) => (
-                <ReviewCard
-                  key={review.id}
-                  review={review as any}
-                  currentUserId={currentUser?.id ?? null}
-                  initialLiked={likedSet.has(review.id)}
-                  initialLikeCount={likeCountMap.get(review.id) ?? 0}
-                  initialCommentCount={commentCountMap.get(review.id) ?? 0}
-                />
-              ))}
-            </div>
+            <ReviewSection
+              reviews={reviews as any}
+              currentUserId={currentUser?.id ?? null}
+              likedSet={likedSet}
+              likeCountMap={likeCountMap}
+              commentCountMap={commentCountMap}
+            />
           )}
         </div>
       </div>

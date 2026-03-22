@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { Inter, JetBrains_Mono, DM_Serif_Display } from 'next/font/google'
 import { Toaster } from 'sonner'
 import Navbar from '../components/navbar'
+import { Footer } from '@/components/Footer'
 import { NavigationProgress } from '@/components/shared/NavigationProgress'
 import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar'
 import './globals.css'
@@ -47,6 +48,7 @@ export default function RootLayout({
         <NavigationProgress />
         <Suspense><Navbar /></Suspense>
         <main className="min-h-[calc(100vh-4.5rem)]">{children}</main>
+        <Footer />
         <Toaster
           richColors
           position="top-right"

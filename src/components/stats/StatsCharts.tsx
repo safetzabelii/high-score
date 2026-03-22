@@ -15,14 +15,18 @@ interface StatsChartsProps {
 const STATUS_COLORS: Record<string, string> = {
   played: "bg-emerald-500",
   playing: "bg-blue-500",
-  backlog: "bg-amber-500",
+  completed: "bg-amber-500",
+  backlog: "bg-yellow-500",
+  wishlist: "bg-purple-500",
   abandoned: "bg-zinc-600",
 }
 
 const STATUS_LABELS: Record<string, string> = {
   played: "Played",
   playing: "Playing",
+  completed: "Completed",
   backlog: "Backlog",
+  wishlist: "Wishlist",
   abandoned: "Shelved",
 }
 

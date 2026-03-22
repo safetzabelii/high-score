@@ -5,6 +5,7 @@ import Link from "next/link"
 import { User as UserIcon, Settings } from "lucide-react"
 import { FollowButton } from "./FollowButton"
 import type { UserRow } from "@/types/database"
+import { MarkdownText } from "@/components/shared/MarkdownText"
 
 interface ProfileHeaderProps {
   profile: UserRow
@@ -76,7 +77,11 @@ export function ProfileHeader({
           </div>
 
           {profile.bio && (
-            <p className="mt-2 text-[13px] text-zinc-400 max-w-lg leading-relaxed">{profile.bio}</p>
+            <div className="mt-2 max-w-lg">
+              <MarkdownText className="text-[13px] text-zinc-400">
+                {profile.bio}
+              </MarkdownText>
+            </div>
           )}
 
         </div>

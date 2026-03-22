@@ -84,6 +84,18 @@ const RATING_FILTERS = [
   { key: "6+", label: "6+ Decent" },
 ] as const
 
+// Platform filter options
+const PLATFORM_FILTERS = [
+  { key: "all", label: "All Platforms" },
+  { key: "pc", label: "PC" },
+  { key: "ps5", label: "PS5" },
+  { key: "ps4", label: "PS4" },
+  { key: "xsx", label: "Xbox Series X|S" },
+  { key: "xone", label: "Xbox One" },
+  { key: "switch", label: "Nintendo Switch" },
+  { key: "mobile", label: "Mobile" },
+] as const
+
 // Sort options
 const SORT_OPTIONS = [
   { key: "popular", label: "Most Popular" },
@@ -95,6 +107,7 @@ const SORT_OPTIONS = [
 type GenreKey = typeof GENRE_FILTERS[number]["key"]
 type YearKey = typeof YEAR_FILTERS[number]["key"]
 type RatingKey = typeof RATING_FILTERS[number]["key"]
+type PlatformKey = typeof PLATFORM_FILTERS[number]["key"]
 type SortKey = typeof SORT_OPTIONS[number]["key"]
 
 // Reusable horizontal scroll row with arrow buttons
@@ -209,92 +222,76 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
   const [genreFilter, setGenreFilter] = useState<GenreKey>("all")
   const [yearFilter, setYearFilter] = useState<YearKey>("all")
   const [ratingFilter, setRatingFilter] = useState<RatingKey>("all")
+  const [platformFilter, setPlatformFilter] = useState<PlatformKey>("all")
   const [sortBy, setSortBy] = useState<SortKey>("popular")
 
-  const hasActiveFilters = genreFilter !== "all" || yearFilter !== "all" || ratingFilter !== "all"
+  // API-fetched filtered results
+  const [filteredGames, setFilteredGames] = useState<BaseGame[]>([])
+  const [filterLoading, setFilterLoading] = useState(false)
+  const [filterHasMore, setFilterHasMore] = useState(false)
+  const [filterOffset, setFilterOffset] = useState(0)
 
-  // Build filtered game pool
-  const allGames = useMemo(() => {
-    const map = new Map<number, BaseGame>()
-    const addGames = (games: BaseGame[]) => {
-      for (const g of games) if (!map.has(g.id)) map.set(g.id, g)
+  const hasActiveFilters = genreFilter !== "all" || yearFilter !== "all" || ratingFilter !== "all" || platformFilter !== "all"
+
+  // Fetch filtered games from API when filters change
+  useEffect(() => {
+    if (!hasActiveFilters) {
+      setFilteredGames([])
+      setFilterOffset(0)
+      return
     }
-    addGames(popular)
-    addGames(topRated)
-    addGames(recent)
-    addGames(anticipated)
-    addGames(community)
-    addGames(rpgs)
-    addGames(indies)
-    addGames(shooters)
-    addGames(adventure)
-    addGames(strategy)
-    addGames(platformers)
-    addGames(fighting)
-    addGames(racing)
-    addGames(sports)
-    addGames(simulators)
-    addGames(puzzle)
-    addGames(arcade)
-    return [...map.values()]
-  }, [popular, topRated, recent, anticipated, community, rpgs, indies, shooters, adventure, strategy, platformers, fighting, racing, sports, simulators, puzzle, arcade])
 
-  // Genre-specific pools for genre filter
-  const genrePools: Record<string, BaseGame[]> = useMemo(() => ({
-    rpgs, indies, shooters, adventure, strategy, platformers,
-    fighting, racing, sports, simulators, puzzle, arcade,
-  }), [rpgs, indies, shooters, adventure, strategy, platformers, fighting, racing, sports, simulators, puzzle, arcade])
+    const controller = new AbortController()
+    setFilterLoading(true)
+    setFilterOffset(0)
 
-  // Apply filters
-  const filteredGames = useMemo(() => {
-    let pool = genreFilter !== "all" && genrePools[genreFilter]
-      ? genrePools[genreFilter]
-      : allGames
+    const params = new URLSearchParams()
+    if (genreFilter !== "all") params.set("genre", genreFilter)
+    if (yearFilter !== "all") params.set("year", yearFilter)
+    if (ratingFilter !== "all") params.set("rating", ratingFilter)
+    if (platformFilter !== "all") params.set("platform", platformFilter)
+    if (sortBy !== "popular") params.set("sort", sortBy)
+    params.set("limit", "30")
+    params.set("offset", "0")
 
-    // Year filter
-    if (yearFilter !== "all") {
-      pool = pool.filter((g) => {
-        if (!g.release_year) return false
-        switch (yearFilter) {
-          case "2026": return g.release_year === 2026
-          case "2025": return g.release_year === 2025
-          case "2024": return g.release_year === 2024
-          case "2023": return g.release_year === 2023
-          case "2020s": return g.release_year >= 2020 && g.release_year <= 2022
-          case "2010s": return g.release_year >= 2010 && g.release_year <= 2019
-          case "2000s": return g.release_year >= 2000 && g.release_year <= 2009
-          case "classic": return g.release_year < 2000
-          default: return true
-        }
+    fetch(`/api/games/filter?${params}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => {
+        setFilteredGames(data.games ?? [])
+        setFilterHasMore(data.hasMore ?? false)
+        setFilterOffset(30)
       })
-    }
+      .catch(err => {
+        if (err.name !== "AbortError") console.error(err)
+      })
+      .finally(() => setFilterLoading(false))
 
-    // Rating filter
-    if (ratingFilter !== "all") {
-      const minRating = parseFloat(ratingFilter)
-      pool = pool.filter((g) => g.rating != null && g.rating >= minRating)
-    }
+    return () => controller.abort()
+  }, [genreFilter, yearFilter, ratingFilter, platformFilter, sortBy, hasActiveFilters])
 
-    // Sort
-    const sorted = [...pool]
-    switch (sortBy) {
-      case "rating":
-        sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-        break
-      case "newest":
-        sorted.sort((a, b) => (b.release_year ?? 0) - (a.release_year ?? 0))
-        break
-      case "name":
-        sorted.sort((a, b) => a.title.localeCompare(b.title))
-        break
-      case "popular":
-      default:
-        // Keep original order (already sorted by popularity from IGDB)
-        break
-    }
+  const loadMoreFiltered = useCallback(async () => {
+    setFilterLoading(true)
+    const params = new URLSearchParams()
+    if (genreFilter !== "all") params.set("genre", genreFilter)
+    if (yearFilter !== "all") params.set("year", yearFilter)
+    if (ratingFilter !== "all") params.set("rating", ratingFilter)
+    if (platformFilter !== "all") params.set("platform", platformFilter)
+    if (sortBy !== "popular") params.set("sort", sortBy)
+    params.set("limit", "30")
+    params.set("offset", String(filterOffset))
 
-    return sorted
-  }, [allGames, genrePools, genreFilter, yearFilter, ratingFilter, sortBy])
+    try {
+      const res = await fetch(`/api/games/filter?${params}`)
+      const data = await res.json()
+      setFilteredGames(prev => [...prev, ...(data.games ?? [])])
+      setFilterHasMore(data.hasMore ?? false)
+      setFilterOffset(prev => prev + 30)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setFilterLoading(false)
+    }
+  }, [genreFilter, yearFilter, ratingFilter, platformFilter, sortBy, filterOffset])
 
   // Auto-advance featured carousel
   useEffect(() => {
@@ -343,7 +340,7 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
           Filters
           {hasActiveFilters && (
             <span className="bg-[#ff0055] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-              {[genreFilter !== "all", yearFilter !== "all", ratingFilter !== "all"].filter(Boolean).length}
+              {[genreFilter !== "all", yearFilter !== "all", ratingFilter !== "all", platformFilter !== "all"].filter(Boolean).length}
             </span>
           )}
         </button>
@@ -378,6 +375,7 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
             <FilterSelect value={genreFilter} onChange={setGenreFilter} options={GENRE_FILTERS} />
             <FilterSelect value={yearFilter} onChange={setYearFilter} options={YEAR_FILTERS} />
             <FilterSelect value={ratingFilter} onChange={setRatingFilter} options={RATING_FILTERS} />
+            <FilterSelect value={platformFilter} onChange={setPlatformFilter} options={PLATFORM_FILTERS} />
             <div className="hidden sm:block h-5 w-px bg-zinc-700/50 mx-1" />
             <FilterSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
 
@@ -387,6 +385,7 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
                   setGenreFilter("all")
                   setYearFilter("all")
                   setRatingFilter("all")
+                  setPlatformFilter("all")
                   setSortBy("popular")
                 }}
                 className="ml-auto text-[12px] text-zinc-500 hover:text-[#ff0055] transition-colors flex items-center gap-1"
@@ -405,11 +404,16 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
           <div className="flex items-center gap-2 mb-4 text-zinc-400">
             <SlidersHorizontal className="h-4 w-4" />
             <p className="text-sm font-medium">
-              {filteredGames.length} game{filteredGames.length !== 1 ? "s" : ""} found
+              {filterLoading && filteredGames.length === 0 ? "Searching..." : `${filteredGames.length}${filterHasMore ? "+" : ""} game${filteredGames.length !== 1 ? "s" : ""} found`}
             </p>
           </div>
 
-          {filteredGames.length === 0 ? (
+          {filterLoading && filteredGames.length === 0 ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Filtering...
+            </div>
+          ) : filteredGames.length === 0 ? (
             <div className="py-16 text-center">
               <Gamepad2 className="mx-auto h-10 w-10 text-zinc-700 mb-3" />
               <p className="text-sm text-zinc-500">No games match your filters</p>
@@ -418,6 +422,7 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
                   setGenreFilter("all")
                   setYearFilter("all")
                   setRatingFilter("all")
+                  setPlatformFilter("all")
                 }}
                 className="mt-3 text-sm text-[#ff0055] hover:underline"
               >
@@ -425,18 +430,42 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-              {filteredGames.map((game) => (
-                <div key={game.id}>
-                  <GameCover
-                    slug={game.slug}
-                    title={game.title}
-                    coverUrl={game.cover_url}
-                    className="w-full"
-                    showTitle
-                  />
+            <div className="space-y-8">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+                {filteredGames.map((game) => (
+                  <div key={game.id}>
+                    <GameCover
+                      slug={game.slug}
+                      title={game.title}
+                      coverUrl={game.cover_url}
+                      className="w-full"
+                      showTitle
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {filterHasMore && (
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={loadMoreFiltered}
+                    disabled={filterLoading}
+                    className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/50 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all hover:border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  >
+                    {filterLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-[#ff0055]" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load more
+                        <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                      </>
+                    )}
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

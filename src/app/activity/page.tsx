@@ -126,7 +126,9 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       const statusLabel: Record<string, string> = {
         played: "Logged",
         playing: "Started playing",
+        completed: "Completed",
         backlog: "Added to backlog",
+        wishlist: "Wishlisted",
         abandoned: "Shelved",
       }
       return (

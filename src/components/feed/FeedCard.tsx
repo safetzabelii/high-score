@@ -8,12 +8,15 @@ import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { LikeButton } from "@/components/shared/LikeButton"
 import { CommentSection } from "@/components/shared/CommentSection"
 import { SpoilerGuard } from "@/components/shared/SpoilerGuard"
+import { MarkdownText } from "@/components/shared/MarkdownText"
 import { MessageCircle, ChevronDown, ChevronUp } from "lucide-react"
 
 const STATUS_LABELS: Record<string, string> = {
   played: "played",
   playing: "is playing",
+  completed: "completed",
   backlog: "wants to play",
+  wishlist: "wishlisted",
   abandoned: "shelved",
 }
 
@@ -92,9 +95,9 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
           {entry.review_text && entry.review_text.trim().length > 0 && (
             <div className="mt-1.5">
               <SpoilerGuard containsSpoilers={entry.contains_spoilers}>
-                <p className="text-[13px] text-zinc-400 leading-relaxed line-clamp-3">
+                <MarkdownText className="text-[13px] text-zinc-400" clamp={3}>
                   {entry.review_text}
-                </p>
+                </MarkdownText>
               </SpoilerGuard>
             </div>
           )}

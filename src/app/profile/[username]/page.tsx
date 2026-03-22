@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Globe, Lock, List as ListIcon } from "lucide-react"
 import { ProfileHeader } from "@/components/profile/ProfileHeader"
 import { GameLogGrid } from "@/components/profile/GameLogGrid"
+import { FavoriteGames } from "@/components/profile/FavoriteGames"
 import { SectionHeading } from "@/components/shared/SectionHeading"
 import type { GameStatus, ListRow } from "@/types/database"
 
@@ -61,7 +62,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
 
   if (
     statusFilter &&
-    ["played", "playing", "backlog", "abandoned"].includes(statusFilter)
+    ["played", "playing", "completed", "backlog", "wishlist", "abandoned"].includes(statusFilter)
   ) {
     logsQuery = logsQuery.eq("status", statusFilter as GameStatus)
   }
@@ -121,8 +122,17 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     listsQuery = listsQuery.eq("is_public", true)
   }
 
-  const { data: rawLists } = await listsQuery
+  const [{ data: rawLists }, { data: rawFavorites }] = await Promise.all([
+    listsQuery,
+    (supabase
+      .from("favorite_games")
+      .select("game_id, position, games(id, title, slug, cover_url)")
+      .eq("user_id", profile.id)
+      .order("position", { ascending: true })
+      .limit(4) as any),
+  ])
   const lists = (rawLists ?? []) as ListRow[]
+  const favorites = (rawFavorites ?? []) as any[]
 
   return (
     <div className="mx-auto max-w-[960px] px-4 py-8">
@@ -134,6 +144,17 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
         isFollowing={isFollowing}
         currentUserId={currentUser?.id ?? null}
       />
+
+      {/* Favorite Games */}
+      {(favorites.length > 0 || isOwn) && (
+        <section className="mt-6 mb-8">
+          <FavoriteGames
+            favorites={favorites}
+            isOwn={isOwn}
+            userId={profile.id}
+          />
+        </section>
+      )}
 
       <section className="mt-8">
         <GameLogGrid

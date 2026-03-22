@@ -7,6 +7,7 @@ import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { LikeButton } from "@/components/shared/LikeButton"
 import { CommentSection } from "@/components/shared/CommentSection"
 import { SpoilerGuard } from "@/components/shared/SpoilerGuard"
+import { MarkdownText } from "@/components/shared/MarkdownText"
 
 interface ReviewCardProps {
   review: {
@@ -75,9 +76,9 @@ export function ReviewCard({
       {review.review_text && (
         <div className="mb-3">
           <SpoilerGuard containsSpoilers={review.contains_spoilers}>
-            <p className="text-[15px] text-zinc-300 leading-relaxed whitespace-pre-line">
+            <MarkdownText className="text-[15px] text-zinc-300">
               {review.review_text}
-            </p>
+            </MarkdownText>
           </SpoilerGuard>
         </div>
       )}

@@ -44,7 +44,9 @@ export default async function StatsPage() {
   const statusCounts: Record<string, number> = {
     played: 0,
     playing: 0,
+    completed: 0,
     backlog: 0,
+    wishlist: 0,
     abandoned: 0,
   }
   for (const log of logs) {

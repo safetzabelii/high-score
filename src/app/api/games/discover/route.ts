@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
-import { 
-  getPopularGames, 
-  getAnticipatedGames, 
-  getRecentReleases, 
+import {
+  getPopularGames,
+  getAnticipatedGames,
+  getRecentReleases,
   getTopRatedGames,
+  getHiddenGems,
+  getComingSoon,
   getGamesByGenre,
-  shapeGame 
+  shapeGame
 } from "@/lib/igdb/fetch"
 import { createClient } from "@/lib/supabase/server"
 
@@ -71,6 +73,12 @@ export async function GET(request: Request) {
         break
       case "arcade":
         rawGames = await getGamesByGenre(33, limit, offset)
+        break
+      case "hiddenGems":
+        rawGames = await getHiddenGems(limit, offset)
+        break
+      case "comingSoon":
+        rawGames = await getComingSoon(limit, offset)
         break
       case "community":
         // For community, we fetch from Supabase

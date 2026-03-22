@@ -2,13 +2,13 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Gamepad2, User as UserIcon, MessageSquare, Heart } from "lucide-react"
+import { Gamepad2, User as UserIcon, MessageSquare, Heart, Calendar, Sparkles } from "lucide-react"
 import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { LogGameButton } from "@/components/shared/LogGameButton"
 import { InfiniteFeed } from "@/components/feed/InfiniteFeed"
 import { SectionHeading } from "@/components/shared/SectionHeading"
 import { GameCover } from "@/components/shared/GameCover"
-import { getPopularGames, shapeGame, warmGameCache } from "@/lib/igdb/fetch"
+import { getPopularGames, getHiddenGems, getComingSoon, shapeGame, warmGameCache } from "@/lib/igdb/fetch"
 import { syncGamesToAlgolia } from "@/lib/igdb/algolia/client"
 import type { UserRow, GameLogRow, GameRow } from "@/types/database"
 
@@ -24,6 +24,8 @@ export default async function HomePage() {
     profileRes,
     followingRes,
     popularRaw,
+    hiddenGemsRaw,
+    comingSoonRaw,
     recentLogsRes,
     activeUsersRes,
     logCountRes,
@@ -32,6 +34,8 @@ export default async function HomePage() {
     supabase.from("users").select("*").eq("id", user.id).single(),
     supabase.from("follows").select("following_id").eq("follower_id", user.id),
     getPopularGames(12),
+    getHiddenGems(8).catch(() => []),
+    getComingSoon(8).catch(() => []),
     (supabase.from("game_logs").select("game_id, games(*)").order("created_at", { ascending: false }).limit(30) as any),
     (supabase.rpc("get_active_users_fallback").limit(8) as any),
     supabase.from("game_logs").select("*", { count: "exact", head: true }).eq("user_id", user.id),
@@ -49,6 +53,15 @@ export default async function HomePage() {
   const feedUserIds = [...followingIds, user.id]
 
   const popularGames = popularRaw.map(shapeGame)
+  const hiddenGems = hiddenGemsRaw.map(shapeGame)
+  const comingSoonGames = comingSoonRaw.map((g) => {
+    const shaped = shapeGame(g)
+    // Preserve full release date for display
+    const releaseDate = g.first_release_date
+      ? new Date(g.first_release_date * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : null
+    return { ...shaped, releaseDate }
+  })
 
   // Fire-and-forget: warm the game cache + Algolia in parallel
   // These don't block the page render
@@ -172,9 +185,70 @@ export default async function HomePage() {
         {/* ─── Popular This Week — grid ──────────────────────── */}
         {popularGames.length > 0 && (
           <section className="pb-8">
-            <SectionHeading title="Popular this week" moreHref="/discover" />
+            <SectionHeading title="Popular this week" moreHref="/discover/popular" />
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
               {popularGames.slice(0, 8).map((game) => (
+                <GameCover
+                  key={game.id}
+                  slug={game.slug}
+                  title={game.title}
+                  coverUrl={game.cover_url}
+                  className="w-full"
+                  showTitle
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ─── Coming Soon — upcoming releases ────────────────── */}
+        {comingSoonGames.length > 0 && (
+          <section className="pb-8">
+            <SectionHeading title="Coming soon" moreHref="/discover/comingSoon" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {comingSoonGames.slice(0, 4).map((game) => (
+                <Link
+                  key={game.id}
+                  href={`/game/${game.slug}`}
+                  className="group flex gap-3 rounded-lg border border-zinc-800/60 bg-zinc-900/40 p-2.5 hover:border-zinc-700 transition-colors"
+                >
+                  <div className="relative h-[72px] w-[48px] flex-shrink-0 overflow-hidden rounded-[3px] bg-zinc-800 border border-zinc-700/30">
+                    {game.cover_url && (
+                      <Image
+                        src={game.cover_url}
+                        alt={game.title}
+                        fill
+                        className="object-cover"
+                        sizes="48px"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 py-0.5">
+                    <p className="text-[13px] font-medium text-zinc-200 group-hover:text-zinc-50 transition-colors truncate">
+                      {game.title}
+                    </p>
+                    {game.releaseDate && (
+                      <p className="flex items-center gap-1 mt-1 text-[11px] text-zinc-500">
+                        <Calendar className="h-3 w-3" />
+                        {game.releaseDate}
+                      </p>
+                    )}
+                    {game.developer && (
+                      <p className="mt-0.5 text-[11px] text-zinc-600 truncate">{game.developer}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ─── Hidden Gems — under-the-radar quality games ───── */}
+        {hiddenGems.length > 0 && (
+          <section className="pb-8">
+            <SectionHeading title="Hidden gems" moreHref="/discover/hiddenGems" />
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+              {hiddenGems.slice(0, 8).map((game) => (
                 <GameCover
                   key={game.id}
                   slug={game.slug}
@@ -324,15 +398,6 @@ export default async function HomePage() {
               </div>
             )}
 
-            <div className="space-y-1.5 text-[11px] text-zinc-300 pt-2 border-t border-zinc-700">
-              <div className="flex items-center gap-3 pt-3">
-                <Link href="/stats" className="hover:text-zinc-400 transition-colors">Stats</Link>
-                <Link href="/backlog" className="hover:text-zinc-400 transition-colors">Backlog</Link>
-                <Link href="/lists" className="hover:text-zinc-400 transition-colors">Lists</Link>
-                <Link href="/activity" className="hover:text-zinc-400 transition-colors">Activity</Link>
-              </div>
-              <p className="text-zinc-700">HIGH-SCORE &mdash; Track your games.</p>
-            </div>
           </aside>
         </div>
       </div>
