@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { Gamepad2, Eye, Heart, List as ListIcon, MessageSquare } from "lucide-react"
+import { Gamepad2, Eye, Heart, List as ListIcon, MessageSquare, Clock } from "lucide-react"
 import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { ShareButton } from "@/components/shared/ShareButton"
 import { SectionHeading } from "@/components/shared/SectionHeading"
@@ -10,6 +10,7 @@ import { getCachedGameBySlug, coverUrl } from "@/lib/igdb/fetch"
 import { syncGameToAlgolia } from "@/lib/igdb/algolia/client"
 import { createClient } from "@/lib/supabase/server"
 import { GamePageActions } from "@/components/game/GamePageActions"
+import { GameEditions } from "@/components/game/GameEditions"
 import { GameSeries } from "@/components/game/GameSeries"
 import { ReviewSection } from "@/components/game/ReviewSection"
 import type { UserRow, GameLogRow } from "@/types/database"
@@ -103,6 +104,13 @@ export default async function GamePage({ params }: GamePageProps) {
     statusCounts[l.status] = (statusCounts[l.status] ?? 0) + 1
   }
 
+  // ── Playtime statistics ─────────────────────────────────────────
+  const logsWithPlaytime = logs.filter((l) => l.playtime_hours != null && l.playtime_hours > 0)
+  const avgPlaytime =
+    logsWithPlaytime.length > 0
+      ? Math.round(logsWithPlaytime.reduce((sum, l) => sum + l.playtime_hours!, 0) / logsWithPlaytime.length)
+      : null
+
   // ── Parallel: likes, user likes, comment counts, lists featuring ──
   const [likeCountsRes, userLikesRes, commentCountsRes, listsFeaturingRes] = await Promise.all([
     supabase
@@ -168,9 +176,10 @@ export default async function GamePage({ params }: GamePageProps) {
     return true
   })
 
-  const currentUserLog = currentUser
-    ? logs.find((l) => l.user_id === currentUser.id) ?? null
-    : null
+  const currentUserLogs = currentUser
+    ? logs.filter((l) => l.user_id === currentUser.id)
+    : []
+  const currentUserLog = currentUserLogs.length > 0 ? currentUserLogs[0] : null
 
   // ── Hero image from cached screenshots — NEVER use artworks (they're logos) ──
   // Prefer later screenshots (first is often a title screen)
@@ -193,6 +202,7 @@ export default async function GamePage({ params }: GamePageProps) {
         playtime_hours: currentUserLog.playtime_hours,
         contains_spoilers: currentUserLog.contains_spoilers,
         logged_date: currentUserLog.logged_date,
+        playthrough_number: currentUserLog.playthrough_number ?? 1,
       }
     : null
 
@@ -274,6 +284,12 @@ export default async function GamePage({ params }: GamePageProps) {
                 <Heart className="h-3 w-3 text-zinc-500" />
                 <span className="tabular-nums font-medium">{ratingsOnly.length}</span> Rated
               </span>
+              {avgPlaytime != null && (
+                <span className="flex items-center gap-1.5 text-zinc-400 col-span-2">
+                  <Clock className="h-3 w-3 text-zinc-500" />
+                  <span className="tabular-nums font-medium">{avgPlaytime}h</span> avg playtime
+                </span>
+              )}
             </div>
 
             {/* Actions panel */}
@@ -450,6 +466,11 @@ export default async function GamePage({ params }: GamePageProps) {
             </div>
           </div>
         )}
+
+        {/* ─── DLC & Editions ───────────────────────────────────── */}
+        <div className="mt-12">
+          <GameEditions gameId={game.id} />
+        </div>
 
         {/* ─── Game Series / Franchise ─────────────────────────── */}
         {(game.collection || game.franchise) && (

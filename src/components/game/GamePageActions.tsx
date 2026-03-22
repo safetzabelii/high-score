@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { Plus, Check, Star, Loader2 } from "lucide-react"
+import { Plus, Check, Star, Loader2, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase/client"
 import type { GameSearchResult, ExistingLog } from "@/components/forms/LogGameModal"
@@ -20,6 +20,7 @@ interface GamePageActionsProps {
 export function GamePageActions({ game, existingLog, isWishlisted: initialWishlisted, gameId }: GamePageActionsProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [newPlaythroughOpen, setNewPlaythroughOpen] = useState(false)
   const [wishlisted, setWishlisted] = useState(initialWishlisted)
   const [wishlistLoading, setWishlistLoading] = useState(false)
 
@@ -99,6 +100,18 @@ export function GamePageActions({ game, existingLog, isWishlisted: initialWishli
         )}
       </button>
 
+      {/* Log another playthrough — only show when user already has a log */}
+      {existingLog && (
+        <button
+          type="button"
+          onClick={() => setNewPlaythroughOpen(true)}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-sm border border-zinc-700 bg-zinc-900 text-zinc-400 px-5 py-2 text-[11px] font-bold uppercase tracking-wider transition-all hover:border-zinc-600 hover:text-zinc-200"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Log Another Playthrough
+        </button>
+      )}
+
       {/* Wishlist button — only show when user hasn't logged the game with another status */}
       {!hasNonWishlistLog && (
         <button
@@ -126,6 +139,17 @@ export function GamePageActions({ game, existingLog, isWishlisted: initialWishli
         preselectedGame={game}
         existingLog={existingLog}
       />
+
+      {/* Separate modal for new playthrough — no existingLog so it creates fresh */}
+      {existingLog && (
+        <LogGameModal
+          open={newPlaythroughOpen}
+          onClose={() => setNewPlaythroughOpen(false)}
+          preselectedGame={game}
+          existingLog={null}
+          forceNewPlaythrough
+        />
+      )}
     </>
   )
 }

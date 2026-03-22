@@ -35,9 +35,26 @@ export function ProfileHeader({
   const totalRated = distEntries.reduce((s, [, c]) => s + c, 0)
   return (
     <div className="mb-6">
+      {/* Banner */}
+      <div className="relative h-32 sm:h-44 -mx-4 sm:-mx-6 mb-5 overflow-hidden rounded-lg">
+        {profile.banner_url ? (
+          <Image
+            src={profile.banner_url}
+            alt=""
+            fill
+            className="object-cover"
+            style={{ objectPosition: `center ${profile.banner_y ?? 50}%` }}
+            priority
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-r from-zinc-800 via-zinc-900 to-zinc-800" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+      </div>
+
       <div className="flex flex-col sm:flex-row items-start gap-5">
         {/* Avatar — 100px circle like Letterboxd */}
-        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-full bg-zinc-800">
+        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-full bg-zinc-800 -mt-16 ring-4 ring-zinc-950">
           {profile.avatar_url ? (
             <Image
               src={profile.avatar_url}

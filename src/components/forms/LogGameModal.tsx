@@ -6,7 +6,7 @@ import Image from "next/image"
 import {
   X, ChevronLeft, Clock, AlertTriangle, Loader2,
   Pencil, Check, CheckCircle2, Gamepad2, BookmarkPlus, XCircle,
-  Layers, ChevronRight, Trophy
+  Layers, ChevronRight, Trophy, RotateCcw
 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -41,6 +41,7 @@ export interface ExistingLog {
   playtime_hours: number | null
   contains_spoilers: boolean
   logged_date: string
+  playthrough_number?: number
 }
 
 interface LogGameModalProps {
@@ -48,6 +49,7 @@ interface LogGameModalProps {
   onClose: () => void
   preselectedGame?: GameSearchResult
   existingLog?: ExistingLog | null
+  forceNewPlaythrough?: boolean
 }
 
 interface Edition {
@@ -103,7 +105,7 @@ const FALLBACK_PLATFORMS = [
   "Switch", "iOS", "Android", "Steam Deck",
 ]
 
-export function LogGameModal({ open, onClose, preselectedGame, existingLog }: LogGameModalProps) {
+export function LogGameModal({ open, onClose, preselectedGame, existingLog, forceNewPlaythrough }: LogGameModalProps) {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
@@ -134,6 +136,10 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
   )
 
   const [fetchingExisting, setFetchingExisting] = useState(false)
+  const [existingPlaythroughs, setExistingPlaythroughs] = useState<
+    { id: string; playthrough_number: number; rating: number | null; status: string; logged_date: string }[]
+  >([])
+  const [currentPlaythrough, setCurrentPlaythrough] = useState<number>(existingLog?.playthrough_number ?? 1)
 
   const availablePlatforms = useMemo(() => {
     // Always use base game platforms (editions inherit them)
@@ -156,7 +162,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
   }, [open])
 
   useEffect(() => {
-    if (open && existingLog) {
+    if (open && existingLog && !forceNewPlaythrough) {
       setRating(existingLog.rating)
       setStatus(existingLog.status)
       setReviewText(existingLog.review_text ?? "")
@@ -167,7 +173,33 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
       setIsEditing(true)
       setStep(2)
     }
-  }, [open, existingLog])
+  }, [open, existingLog, forceNewPlaythrough])
+
+  // When forceNewPlaythrough is set, fetch the next playthrough number
+  useEffect(() => {
+    if (!open || !forceNewPlaythrough || !preselectedGame) return
+    resetForm()
+    setIsEditing(false)
+    setStep(2)
+
+    const gameId = preselectedGame.igdb_id ?? preselectedGame.id ?? Number(preselectedGame.objectID)
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(supabase
+        .from("game_logs")
+        .select("playthrough_number")
+        .eq("user_id", user.id)
+        .eq("game_id", gameId)
+        .order("playthrough_number", { ascending: false })
+        .limit(1) as any)
+        .then(({ data }: any) => {
+          const maxPt = data?.[0]?.playthrough_number ?? 0
+          setCurrentPlaythrough(maxPt + 1)
+        })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, forceNewPlaythrough])
 
   // Fetch editions whenever the active *base* game changes and we're on step 2.
   // We use a ref to deduplicate: no re-fetch when just toggling between editions.
@@ -193,6 +225,8 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
       setEditions([])
       setSelectedEdition(null)
       lastFetchedEditionIdRef.current = null
+      setExistingPlaythroughs([])
+      setCurrentPlaythrough(existingLog?.playthrough_number ?? 1)
       resetForm()
     }, 200)
   }
@@ -236,25 +270,41 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
       if (!user) { setStep(2); return }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: entry } = await (supabase
+      const { data: entries } = await (supabase
         .from("game_logs")
         .select("*")
         .eq("user_id", user.id)
         .eq("game_id", gameId)
-        .single() as any)
+        .order("playthrough_number", { ascending: true }) as any)
 
-      if (entry) {
-        setRating(entry.rating)
-        setStatus(entry.status as GameStatus)
-        setReviewText(entry.review_text ?? "")
-        setPlatforms(entry.platforms ?? [])
-        setPlaytime(entry.playtime_hours?.toString() ?? "")
-        setContainsSpoilers(entry.contains_spoilers)
-        setLoggedDate(entry.logged_date)
+      if (entries && entries.length > 0) {
+        // Load the latest playthrough for editing
+        const latest = entries[entries.length - 1]
+        setRating(latest.rating)
+        setStatus(latest.status as GameStatus)
+        setReviewText(latest.review_text ?? "")
+        setPlatforms(latest.platforms ?? [])
+        setPlaytime(latest.playtime_hours?.toString() ?? "")
+        setContainsSpoilers(latest.contains_spoilers)
+        setLoggedDate(latest.logged_date)
+        setCurrentPlaythrough(latest.playthrough_number ?? 1)
+        setExistingPlaythroughs(entries.map((e: any) => ({
+          id: e.id,
+          playthrough_number: e.playthrough_number ?? 1,
+          rating: e.rating,
+          status: e.status,
+          logged_date: e.logged_date,
+        })))
         setIsEditing(true)
-        toast.info(`You've already logged ${selected.title} — editing your entry.`)
+        if (entries.length > 1) {
+          toast.info(`You have ${entries.length} playthroughs of ${selected.title}.`)
+        } else {
+          toast.info(`You've already logged ${selected.title} — editing your entry.`)
+        }
       } else {
         setIsEditing(false)
+        setExistingPlaythroughs([])
+        setCurrentPlaythrough(1)
         resetForm()
       }
     } catch {
@@ -310,14 +360,24 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
       }, { onConflict: "id" })
       if (gameError) throw gameError
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: logError } = await (supabase.from("game_logs") as any).upsert({
+      const logPayload = {
         user_id: user.id, game_id: gameId, rating,
         status, review_text: reviewText.trim() || null,
         contains_spoilers: containsSpoilers, platforms,
         playtime_hours: playtime ? parseInt(playtime, 10) : null,
         logged_date: loggedDate,
-      }, { onConflict: "user_id,game_id" })
+        playthrough_number: currentPlaythrough,
+      }
+
+      let logError
+      if (isEditing) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;({ error: logError } = await (supabase.from("game_logs") as any)
+          .upsert(logPayload, { onConflict: "user_id,game_id,playthrough_number" }))
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;({ error: logError } = await (supabase.from("game_logs") as any).insert(logPayload))
+      }
       if (logError) throw logError
 
       toast.success(isEditing ? `${game.title} updated!` : `${game.title} logged!`)
@@ -334,7 +394,10 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
 
   async function handleDelete() {
     if (!game) return
-    const confirmed = window.confirm(`Remove ${game.title} from your log?`)
+    const label = existingPlaythroughs.length > 1
+      ? `Remove playthrough #${currentPlaythrough} of ${game.title}?`
+      : `Remove ${game.title} from your log?`
+    const confirmed = window.confirm(label)
     if (!confirmed) return
 
     setIsLoading(true)
@@ -348,6 +411,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
         .delete()
         .eq("user_id", user.id)
         .eq("game_id", gameId)
+        .eq("playthrough_number", currentPlaythrough)
       if (error) throw error
 
       toast.success(`${game.title} removed from your log.`)
@@ -394,6 +458,8 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
             <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
               {step === 1 ? "Log a Game" : isEditing ? (
                 <><Pencil className="h-3.5 w-3.5 text-hs-green" /> Edit Log</>
+              ) : forceNewPlaythrough ? (
+                <><RotateCcw className="h-3.5 w-3.5 text-hs-green" /> New Playthrough</>
               ) : "Log Entry"}
             </h2>
           </div>
@@ -405,9 +471,9 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
 
         {/* Step 1 — Search */}
         {step === 1 && (
-          <div className="p-4 sm:p-6 pb-64">
+          <div className="p-4 sm:p-6">
             <p className="mb-4 text-sm text-zinc-400">Search for the game you want to log.</p>
-            <GameSearchCombobox onSelect={handleGameSelect} />
+            <GameSearchCombobox onSelect={handleGameSelect} inline showTrending />
           </div>
         )}
 
@@ -454,6 +520,67 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog }: Lo
                   </span>
                 )}
               </div>
+
+              {/* Playthrough selector — shown when multiple playthroughs exist */}
+              {existingPlaythroughs.length > 0 && (
+                <div className="space-y-2">
+                  <FieldLabel>Playthrough</FieldLabel>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {existingPlaythroughs.map((pt) => (
+                      <button
+                        key={pt.id}
+                        type="button"
+                        onClick={async () => {
+                          // Load this playthrough's data
+                          setCurrentPlaythrough(pt.playthrough_number)
+                          const { data: { user } } = await supabase.auth.getUser()
+                          if (!user) return
+                          const gameId = game?.igdb_id ?? game?.id ?? Number(game?.objectID)
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          const { data: entry } = await (supabase
+                            .from("game_logs")
+                            .select("*")
+                            .eq("user_id", user.id)
+                            .eq("game_id", gameId)
+                            .eq("playthrough_number", pt.playthrough_number)
+                            .single() as any)
+                          if (entry) {
+                            setRating(entry.rating)
+                            setStatus(entry.status as GameStatus)
+                            setReviewText(entry.review_text ?? "")
+                            setPlatforms(entry.platforms ?? [])
+                            setPlaytime(entry.playtime_hours?.toString() ?? "")
+                            setContainsSpoilers(entry.contains_spoilers)
+                            setLoggedDate(entry.logged_date)
+                            setIsEditing(true)
+                          }
+                        }}
+                        className={cn(
+                          "rounded-sm border px-3 py-1.5 text-xs font-medium transition-all",
+                          currentPlaythrough === pt.playthrough_number
+                            ? "border-hs-green bg-hs-green/10 text-hs-green"
+                            : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+                        )}
+                      >
+                        #{pt.playthrough_number}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextNum = Math.max(...existingPlaythroughs.map(p => p.playthrough_number)) + 1
+                        setCurrentPlaythrough(nextNum)
+                        setIsEditing(false)
+                        resetForm()
+                        toast.info(`Starting playthrough #${nextNum}`)
+                      }}
+                      className="rounded-sm border border-dashed border-zinc-600 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:border-zinc-500 hover:text-zinc-300 transition-all"
+                    >
+                      + New
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Edition Picker — shown only if editions exist */}
               {(editionsLoading || editions.length > 0) && (

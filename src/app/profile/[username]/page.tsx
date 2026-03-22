@@ -49,16 +49,34 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
 
   if (profileError || !profile) notFound()
 
-  const { count: totalCount } = await supabase
-    .from("game_logs")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", profile.id)
+  // Fetch total count + per-status counts in parallel
+  const allStatuses = ["played", "playing", "completed", "backlog", "wishlist", "abandoned"] as const
+  const [{ count: totalCount }, ...statusCountResults] = await Promise.all([
+    supabase
+      .from("game_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", profile.id),
+    ...allStatuses.map(s =>
+      supabase
+        .from("game_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", profile.id)
+        .eq("status", s)
+    ),
+  ])
+  const statusCounts: Record<string, number> = {}
+  allStatuses.forEach((s, i) => {
+    statusCounts[s] = statusCountResults[i].count ?? 0
+  })
+
+  const PAGE_SIZE = 40
 
   let logsQuery = supabase
     .from("game_logs")
     .select("*, games(*)")
     .eq("user_id", profile.id)
     .order("logged_date", { ascending: false })
+    .limit(PAGE_SIZE)
 
   if (
     statusFilter &&
@@ -158,11 +176,16 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
 
       <section className="mt-8">
         <GameLogGrid
+          key={statusFilter ?? "__all__"}
           logs={(logs ?? []) as any}
           activeStatus={(statusFilter as GameStatus) ?? null}
           username={username}
           isOwn={isOwn}
           totalCount={totalCount ?? 0}
+          statusCounts={statusCounts}
+          userId={profile.id}
+          hasMore={(logs?.length ?? 0) >= PAGE_SIZE}
+          pageSize={PAGE_SIZE}
         />
       </section>
 

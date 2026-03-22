@@ -14,6 +14,8 @@ interface SettingsFormProps {
     username: string
     display_name: string
     avatar_url: string | null
+    banner_url: string | null
+    banner_y: number
     bio: string | null
   }
 }
@@ -55,11 +57,19 @@ function SpoilerToggle() {
 export function SettingsForm({ profile }: SettingsFormProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
+  const bannerContainerRef = useRef<HTMLDivElement>(null)
   const [displayName, setDisplayName] = useState(profile.display_name)
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "")
+  const [bannerUrl, setBannerUrl] = useState(profile.banner_url ?? "")
+  const [bannerY, setBannerY] = useState(profile.banner_y ?? 50)
   const [bio, setBio] = useState(profile.bio ?? "")
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [bannerDirty, setBannerDirty] = useState(false)
+  const [isDraggingBanner, setIsDraggingBanner] = useState(false)
+  const dragStartRef = useRef<{ y: number; startBannerY: number } | null>(null)
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -91,6 +101,70 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     }
   }
 
+  async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingBanner(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await fetch("/api/banner/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Upload failed")
+
+      setBannerUrl(data.banner_url)
+      setBannerY(50) // Reset position for new image
+      setBannerDirty(true)
+      toast.info("Banner uploaded — drag to reposition, then save.")
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to upload banner")
+    } finally {
+      setUploadingBanner(false)
+      if (bannerInputRef.current) bannerInputRef.current.value = ""
+    }
+  }
+
+  // Banner drag handlers
+  function handleBannerDragStart(e: React.MouseEvent | React.TouchEvent) {
+    if (!bannerUrl) return
+    e.preventDefault()
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY
+    dragStartRef.current = { y: clientY, startBannerY: bannerY }
+    setIsDraggingBanner(true)
+
+    function handleMove(ev: MouseEvent | TouchEvent) {
+      if (!dragStartRef.current || !bannerContainerRef.current) return
+      const currentY = "touches" in ev ? ev.touches[0].clientY : ev.clientY
+      const containerHeight = bannerContainerRef.current.clientHeight
+      const delta = currentY - dragStartRef.current.y
+      // Invert: drag down = image moves up (lower %)
+      const pctDelta = (delta / containerHeight) * -100
+      const newY = Math.max(0, Math.min(100, dragStartRef.current.startBannerY + pctDelta))
+      setBannerY(newY)
+      setBannerDirty(true)
+    }
+
+    function handleEnd() {
+      setIsDraggingBanner(false)
+      dragStartRef.current = null
+      window.removeEventListener("mousemove", handleMove)
+      window.removeEventListener("mouseup", handleEnd)
+      window.removeEventListener("touchmove", handleMove)
+      window.removeEventListener("touchend", handleEnd)
+    }
+
+    window.addEventListener("mousemove", handleMove)
+    window.addEventListener("mouseup", handleEnd)
+    window.addEventListener("touchmove", handleMove)
+    window.addEventListener("touchend", handleEnd)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
@@ -112,12 +186,15 @@ export function SettingsForm({ profile }: SettingsFormProps) {
         .update({
           display_name: displayName.trim(),
           avatar_url: avatarUrl.trim() || null,
+          banner_url: bannerUrl.trim() || null,
+          banner_y: Math.round(bannerY),
           bio: bio.trim() || null,
         })
         .eq("id", user.id)
 
       if (error) throw error
 
+      setBannerDirty(false)
       toast.success("Profile updated!")
       router.refresh()
     } catch (err: any) {
@@ -169,6 +246,86 @@ export function SettingsForm({ profile }: SettingsFormProps) {
             className="hidden"
           />
         </div>
+      </div>
+
+      {/* Banner preview + upload + reposition */}
+      <div>
+        <div className="flex items-center gap-2 mb-1.5">
+          <label className="block text-sm font-medium text-zinc-300">
+            Profile Banner
+          </label>
+          {bannerDirty && (
+            <span className="text-[10px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full">
+              Unsaved — click Save Changes below
+            </span>
+          )}
+        </div>
+        <div
+          ref={bannerContainerRef}
+          className={cn(
+            "relative h-28 sm:h-36 overflow-hidden rounded-lg border bg-zinc-800 select-none",
+            bannerUrl && !uploadingBanner ? "cursor-grab active:cursor-grabbing" : "",
+            isDraggingBanner ? "border-hs-green" : "border-zinc-700"
+          )}
+          onMouseDown={bannerUrl ? handleBannerDragStart : undefined}
+          onTouchStart={bannerUrl ? handleBannerDragStart : undefined}
+        >
+          {bannerUrl ? (
+            <Image
+              src={bannerUrl}
+              alt="Banner"
+              fill
+              className="object-cover pointer-events-none"
+              style={{ objectPosition: `center ${bannerY}%` }}
+              draggable={false}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-800 via-zinc-900 to-zinc-800" />
+          )}
+          {uploadingBanner && (
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/70">
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
+            </div>
+          )}
+          {/* Upload button + drag hint */}
+          {!isDraggingBanner && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); bannerInputRef.current?.click() }}
+                  disabled={uploadingBanner}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900/80 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-800 transition-colors border border-zinc-600"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <Upload className="h-3 w-3" />
+                  {bannerUrl ? "Change Banner" : "Upload Banner"}
+                </button>
+                {bannerUrl && (
+                  <p className="text-[10px] text-zinc-400">Drag to reposition</p>
+                )}
+              </div>
+            </div>
+          )}
+          {/* Drag indicator when dragging */}
+          {isDraggingBanner && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+              <p className="text-xs text-white font-medium bg-black/60 px-3 py-1 rounded-full">
+                Drag to reposition
+              </p>
+            </div>
+          )}
+        </div>
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleBannerUpload}
+          className="hidden"
+        />
+        <p className="mt-1 text-xs text-zinc-600">
+          Recommended: 1500x500px, max 4MB. {bannerUrl && "Drag image to adjust position."}
+        </p>
       </div>
 
       {/* Display name */}

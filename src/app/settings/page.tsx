@@ -30,6 +30,8 @@ export default async function SettingsPage() {
           username: profile.username,
           display_name: profile.display_name,
           avatar_url: profile.avatar_url,
+          banner_url: profile.banner_url,
+          banner_y: profile.banner_y ?? 50,
           bio: profile.bio,
         }}
       />

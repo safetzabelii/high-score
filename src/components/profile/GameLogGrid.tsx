@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowUpDown, Pencil } from "lucide-react"
+import { ArrowUpDown, Pencil, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase/client"
 import dynamic from "next/dynamic"
 import type { GameSearchResult, ExistingLog } from "@/components/forms/LogGameModal"
 
@@ -29,6 +30,7 @@ interface LogEntry {
   playtime_hours: number | null
   contains_spoilers: boolean
   logged_date: string
+  playthrough_number?: number
   games: GameWithCover | null
 }
 
@@ -38,6 +40,10 @@ interface GameLogGridProps {
   username: string
   isOwn: boolean
   totalCount: number
+  statusCounts: Record<string, number>
+  userId: string
+  hasMore: boolean
+  pageSize: number
 }
 
 type SortKey = "date" | "rating" | "name"
@@ -70,13 +76,46 @@ function sortLogs(logs: LogEntry[], sortKey: SortKey): LogEntry[] {
   })
 }
 
-export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }: GameLogGridProps) {
+export function GameLogGrid({ logs: initialLogs, activeStatus, username, isOwn, totalCount, statusCounts, userId, hasMore: initialHasMore, pageSize }: GameLogGridProps) {
   const router = useRouter()
   const [sortKey, setSortKey] = useState<SortKey>("date")
+  const [allLogs, setAllLogs] = useState<LogEntry[]>(initialLogs)
+  const [canLoadMore, setCanLoadMore] = useState(initialHasMore)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editGame, setEditGame] = useState<GameSearchResult | null>(null)
   const [editLog, setEditLog] = useState<ExistingLog | null>(null)
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !canLoadMore) return
+    setLoadingMore(true)
+    try {
+      let query = supabase
+        .from("game_logs")
+        .select("*, games(*)")
+        .eq("user_id", userId)
+        .order("logged_date", { ascending: false })
+        .range(allLogs.length, allLogs.length + pageSize - 1)
+
+      if (activeStatus) {
+        query = query.eq("status", activeStatus)
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (query as any)
+      if (data && data.length > 0) {
+        setAllLogs(prev => [...prev, ...data])
+        setCanLoadMore(data.length >= pageSize)
+      } else {
+        setCanLoadMore(false)
+      }
+    } catch {
+      setCanLoadMore(false)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [userId, activeStatus, allLogs.length, pageSize, loadingMore, canLoadMore])
 
   function handleTabClick(status: GameStatus | null) {
     const base = `/profile/${username}`
@@ -107,40 +146,22 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
       playtime_hours: log.playtime_hours,
       contains_spoilers: log.contains_spoilers,
       logged_date: log.logged_date,
+      playthrough_number: log.playthrough_number ?? 1,
     })
     setEditModalOpen(true)
   }
 
-  const sorted = sortLogs(logs, sortKey)
+  const sorted = sortLogs(allLogs, sortKey)
 
   return (
     <div>
-      {/* Filter tabs + sort — Letterboxd-style underline tabs */}
-      <div className="mb-5 flex items-center justify-between gap-4 flex-wrap border-b border-zinc-800/60">
-        <div className="flex items-center gap-0 overflow-x-auto">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.label}
-              type="button"
-              onClick={() => handleTabClick(tab.value)}
-              className={cn(
-                "px-3.5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap border-b-2 -mb-px",
-                activeStatus === tab.value
-                  ? "border-hs-green text-zinc-100"
-                  : "border-transparent text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
-              )}
-            >
-              {tab.label}
-              {tab.value === null && totalCount > 0 && (
-                <span className="ml-1.5 text-xs text-zinc-600 font-mono tabular-nums">{totalCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
+      {/* Section header with sort controls */}
+      <div className="mb-4 flex items-end justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400">Games</h2>
 
         {/* Sort */}
-        {logs.length > 1 && (
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500 pb-2">
+        {allLogs.length > 1 && (
+          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
             <ArrowUpDown className="h-3 w-3" />
             {SORT_OPTIONS.map((opt) => (
               <button
@@ -161,8 +182,41 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
         )}
       </div>
 
+      {/* Status filter tabs */}
+      <div className="mb-5 flex items-center gap-0 overflow-x-auto border-b border-zinc-800/60">
+        {STATUS_TABS.map((tab) => {
+          const count = tab.value === null ? totalCount : (statusCounts[tab.value] ?? 0)
+          const isActive = activeStatus === tab.value
+
+          return (
+            <button
+              key={tab.label}
+              type="button"
+              onClick={() => handleTabClick(tab.value)}
+              className={cn(
+                "relative px-3.5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap border-b-2 -mb-px",
+                isActive
+                  ? "border-hs-green text-zinc-100"
+                  : "border-transparent text-zinc-500 hover:text-zinc-300 hover:border-zinc-600",
+                count === 0 && tab.value !== null && !isActive && "text-zinc-700 hover:text-zinc-500"
+              )}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span className={cn(
+                  "ml-1.5 text-xs font-mono tabular-nums",
+                  isActive ? "text-zinc-400" : "text-zinc-600"
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Grid — Letterboxd poster grid style */}
-      {logs.length === 0 ? (
+      {allLogs.length === 0 ? (
         <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/30 py-16 text-center">
           <p className="text-sm text-zinc-500">
             {activeStatus
@@ -191,6 +245,13 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
                     ) : (
                       <div className="flex h-full items-center justify-center p-2 text-center text-[10px] text-zinc-600">
                         {game.title}
+                      </div>
+                    )}
+
+                    {/* Playthrough badge */}
+                    {(log.playthrough_number ?? 1) > 1 && (
+                      <div className="absolute top-1 left-1 z-10 flex h-4 min-w-4 items-center justify-center rounded bg-hs-green/90 px-1 text-[8px] font-bold text-white">
+                        #{log.playthrough_number}
                       </div>
                     )}
 
@@ -233,6 +294,26 @@ export function GameLogGrid({ logs, activeStatus, username, isOwn, totalCount }:
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Load more */}
+      {canLoadMore && (
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/50 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all hover:border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-hs-green" />
+                Loading...
+              </>
+            ) : (
+              "Load more games"
+            )}
+          </button>
         </div>
       )}
 

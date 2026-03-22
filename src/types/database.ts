@@ -7,6 +7,8 @@ export interface UserRow {
   username: string
   display_name: string
   avatar_url: string | null
+  banner_url: string | null
+  banner_y: number      // 0-100, vertical position % for banner crop
   bio: string | null
   created_at: string
 }
@@ -31,6 +33,7 @@ export interface GameLogRow {
   platforms: string[]
   playtime_hours: number | null
   logged_date: string     // ISO date string "YYYY-MM-DD"
+  playthrough_number: number  // 1-based, allows multiple logs per game
   created_at: string
 }
 
@@ -127,7 +130,7 @@ export type InsertGameLog = Omit<GameLogRow, 'id' | 'created_at'>
 export type UpdateGameLog = Partial<Omit<GameLogRow, 'id' | 'user_id' | 'game_id' | 'created_at'>>
 
 export type InsertGame = Omit<GameRow, 'created_at'>
-export type UpdateUser = Partial<Pick<UserRow, 'display_name' | 'avatar_url' | 'bio'>>
+export type UpdateUser = Partial<Pick<UserRow, 'display_name' | 'avatar_url' | 'banner_url' | 'banner_y' | 'bio'>>
 
 
 export interface Database {
