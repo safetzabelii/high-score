@@ -2,14 +2,14 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Gamepad2, User as UserIcon, MessageSquare, Heart, Calendar, Sparkles } from "lucide-react"
+import { Gamepad2, MessageSquare, Heart, Calendar } from "lucide-react"
 import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import { LogGameButton } from "@/components/shared/LogGameButton"
-import { InfiniteFeed } from "@/components/feed/InfiniteFeed"
 import { SectionHeading } from "@/components/shared/SectionHeading"
 import { GameCover } from "@/components/shared/GameCover"
-import { getPopularGames, getHiddenGems, getComingSoon, shapeGame, warmGameCache } from "@/lib/igdb/fetch"
+import { getPopularThisWeek, getHiddenGems, getComingSoon, shapeGame, warmGameCache } from "@/lib/igdb/fetch"
 import { syncGamesToAlgolia } from "@/lib/igdb/algolia/client"
+import { CommunitySlider } from "@/components/home/CommunitySlider"
 import type { UserRow, GameLogRow, GameRow } from "@/types/database"
 
 export default async function HomePage() {
@@ -27,19 +27,13 @@ export default async function HomePage() {
     hiddenGemsRaw,
     comingSoonRaw,
     recentLogsRes,
-    activeUsersRes,
-    logCountRes,
-    followerCountRes,
   ] = await Promise.all([
     supabase.from("users").select("*").eq("id", user.id).single(),
     supabase.from("follows").select("following_id").eq("follower_id", user.id),
-    getPopularGames(12),
+    getPopularThisWeek(12),
     getHiddenGems(8).catch(() => []),
     getComingSoon(8).catch(() => []),
     (supabase.from("game_logs").select("game_id, games(*)").order("created_at", { ascending: false }).limit(30) as any),
-    (supabase.rpc("get_active_users_fallback").limit(8) as any),
-    supabase.from("game_logs").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", user.id),
   ])
 
   const profile = profileRes.data
@@ -78,18 +72,6 @@ export default async function HomePage() {
       trendingGames.push(log.games)
       if (trendingGames.length >= 8) break
     }
-  }
-
-  let usersToShow: (UserRow & { log_count?: number })[] = []
-  if (activeUsersRes.data && activeUsersRes.data.length > 0) {
-    usersToShow = activeUsersRes.data
-  } else {
-    const { data: recentUsers } = await supabase
-      .from("users")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(6)
-    usersToShow = (recentUsers ?? []) as UserRow[]
   }
 
   const PAGE_SIZE = 20
@@ -147,9 +129,6 @@ export default async function HomePage() {
       commentCount: commentCountMap.get(log.id) ?? 0,
     }))
 
-  const initialCursor = hasMore ? feedLogs[feedLogs.length - 1].created_at : null
-  const logCount = logCountRes.count ?? 0
-  const followerCount = followerCountRes.count ?? 0
   const recentReviews = feedEntries.filter((e) => e.review_text && e.review_text.trim().length > 0).slice(0, 4)
 
   return (
@@ -163,22 +142,11 @@ export default async function HomePage() {
       </div>
 
       <div className="mx-auto max-w-[960px] px-4">
-        {/* ─── New From Community — poster strip ─────────────── */}
+        {/* ─── New From Community — scrollable poster strip ──── */}
         {trendingGames.length > 0 && (
           <section className="pb-8">
-            <SectionHeading title="New from your community" />
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-              {trendingGames.map((game) => (
-                <GameCover
-                  key={game.id}
-                  slug={game.slug}
-                  title={game.title}
-                  coverUrl={game.cover_url}
-                  size="md"
-                  showTitle
-                />
-              ))}
-            </div>
+            <SectionHeading title="New from your community" moreHref="/activity" moreLabel="All activity" />
+            <CommunitySlider games={trendingGames} />
           </section>
         )}
 
@@ -326,80 +294,81 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* ─── Feed + Sidebar — Letterboxd two-column ────────── */}
-        <div className="flex flex-col lg:flex-row gap-10 pb-8">
-          <div className="flex-1 min-w-0">
-            <SectionHeading title="Friend activity" moreHref="/activity" moreLabel="All activity" />
+        {/* ─── Friend Activity — two-column, limited preview ──── */}
+        <section className="pb-8">
+          <SectionHeading title="Friend activity" moreHref="/activity" moreLabel="All activity" />
 
-            {feedEntries.length === 0 ? (
-              <div className="py-16 text-center">
-                <Gamepad2 className="mx-auto h-10 w-10 text-zinc-700 mb-3" />
-                <h3 className="text-base font-semibold text-zinc-300">Your feed is empty</h3>
-                <p className="mt-1.5 text-sm text-zinc-500 max-w-xs mx-auto">
-                  Follow players or log your first game to see activity here.
-                </p>
-                <div className="mt-5">
-                  <LogGameButton />
-                </div>
+          {feedEntries.length === 0 ? (
+            <div className="py-16 text-center">
+              <Gamepad2 className="mx-auto h-10 w-10 text-zinc-700 mb-3" />
+              <h3 className="text-base font-semibold text-zinc-300">Your feed is empty</h3>
+              <p className="mt-1.5 text-sm text-zinc-500 max-w-xs mx-auto">
+                Follow players or log your first game to see activity here.
+              </p>
+              <div className="mt-5">
+                <LogGameButton />
               </div>
-            ) : (
-              <InfiniteFeed
-                initialEntries={feedEntries}
-                initialCursor={initialCursor}
-                currentUserId={user.id}
-              />
-            )}
-          </div>
-
-          {/* Sidebar — 230px like Letterboxd */}
-          <aside className="w-full lg:w-[230px] flex-shrink-0 space-y-6">
-            {profile && (
-              <div>
-                <div className="flex items-center gap-5 text-center">
-                  <Link href={`/profile/${profile.username}`} className="group">
-                    <p className="text-lg font-semibold text-zinc-100 group-hover:text-hs-blue transition-colors tabular-nums">{logCount}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Games</p>
-                  </Link>
-                  <div>
-                    <p className="text-lg font-semibold text-zinc-100 tabular-nums">{followingIds.length}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Following</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-zinc-100 tabular-nums">{followerCount}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Followers</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {usersToShow.length > 0 && (
-              <div>
-                <h3 className="section-heading mb-3">Popular members</h3>
-                <div className="space-y-0.5">
-                  {usersToShow.slice(0, 6).map((u) => (
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-x-8 gap-y-0 sm:grid-cols-2">
+                {feedEntries.slice(0, 6).map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex gap-3 py-3 border-b border-zinc-800/50"
+                  >
                     <Link
-                      key={u.id}
-                      href={`/profile/${u.username}`}
-                      className="flex items-center gap-2.5 rounded py-1.5 hover:bg-zinc-800/40 transition-colors -mx-1.5 px-1.5"
+                      href={`/game/${entry.game_slug}`}
+                      className="relative h-[80px] w-[54px] flex-shrink-0 overflow-hidden rounded-[3px] bg-zinc-800 border border-zinc-700/30 poster-hover"
                     >
-                      <div className="relative h-6 w-6 flex-shrink-0 overflow-hidden rounded-full bg-zinc-800">
-                        {u.avatar_url ? (
-                          <Image src={u.avatar_url} alt={u.display_name} fill className="object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <UserIcon className="h-3 w-3 text-zinc-600" />
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-[13px] font-medium text-zinc-300 truncate">{u.display_name}</span>
+                      {entry.cover_url && (
+                        <Image
+                          src={entry.cover_url}
+                          alt={entry.game_title}
+                          fill
+                          className="object-cover"
+                          sizes="54px"
+                        />
+                      )}
                     </Link>
-                  ))}
-                </div>
+                    <div className="flex-1 min-w-0 py-0.5">
+                      <Link
+                        href={`/game/${entry.game_slug}`}
+                        className="text-[13px] font-medium text-zinc-200 hover:text-zinc-50 transition-colors leading-tight line-clamp-1"
+                      >
+                        {entry.game_title}
+                      </Link>
+                      {entry.rating != null && entry.rating > 0 && (
+                        <div className="mt-0.5">
+                          <HeartRatingDisplay rating={entry.rating} />
+                        </div>
+                      )}
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-zinc-500">
+                        <Link href={`/profile/${entry.username}`} className="font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
+                          {entry.display_name || entry.username}
+                        </Link>
+                        <span className="text-zinc-600">&middot;</span>
+                        <span className="text-zinc-600">
+                          {new Date(entry.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
-
-          </aside>
-        </div>
+              {feedEntries.length > 6 && (
+                <div className="mt-4 text-center">
+                  <Link
+                    href="/activity"
+                    className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    See all activity
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+        </section>
       </div>
     </div>
   )

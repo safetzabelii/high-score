@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChevronLeft, Loader2, Heart } from "lucide-react"
@@ -24,6 +24,8 @@ const categoryTitles: Record<string, string> = {
   simulators: "Top Simulators",
   puzzle: "Top Puzzle Games",
   arcade: "Arcade Classics",
+  hiddenGems: "Hidden Gems",
+  comingSoon: "Coming Soon",
 }
 
 export function CategoryClient({ 
@@ -39,11 +41,12 @@ export function CategoryClient({
   const [hasMore, setHasMore] = useState(initialHasMore)
   const [isLoading, setIsLoading] = useState(false)
   const [offset, setOffset] = useState(initialGames.length)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return
     setIsLoading(true)
-    
+
     try {
       const res = await fetch(`/api/games/discover?category=${category}&limit=30&offset=${offset}`)
       if (res.ok) {
@@ -63,6 +66,19 @@ export function CategoryClient({
       setIsLoading(false)
     }
   }, [category, offset, hasMore, isLoading])
+
+  // Auto-load with IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore()
+      },
+      { rootMargin: "600px" }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadMore])
 
   const title = categoryTitles[category] || "Discover Games"
 
@@ -86,21 +102,13 @@ export function CategoryClient({
       </div>
 
       {hasMore && (
-        <div className="mt-12 flex justify-center">
-          <button
-            onClick={loadMore}
-            disabled={isLoading}
-            className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/50 px-8 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-all hover:border-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin text-hs-green" />
-                Loading...
-              </>
-            ) : (
-              "Load more games"
-            )}
-          </button>
+        <div ref={sentinelRef} className="mt-12 flex justify-center">
+          {isLoading && (
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
+              <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+              Loading more...
+            </div>
+          )}
         </div>
       )}
     </div>

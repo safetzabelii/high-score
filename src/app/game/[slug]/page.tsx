@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server"
 import { GamePageActions } from "@/components/game/GamePageActions"
 import { GameEditions } from "@/components/game/GameEditions"
 import { GameSeries } from "@/components/game/GameSeries"
+import { GameAwards } from "@/components/game/GameAwards"
 import { ReviewSection } from "@/components/game/ReviewSection"
 import type { UserRow, GameLogRow } from "@/types/database"
 
@@ -218,6 +219,11 @@ export default async function GamePage({ params }: GamePageProps) {
     rating: game.rating,
   }
 
+  // A game is unreleased if its release year is current or future AND nobody has played/completed it
+  const currentYear = new Date().getFullYear()
+  const playedCount = (statusCounts.played || 0) + (statusCounts.completed || 0) + (statusCounts.playing || 0)
+  const isUnreleased = game.release_year != null && game.release_year >= currentYear && playedCount === 0
+
   // Rating histogram
   const ratingBuckets = new Array(10).fill(0) // 0.5, 1.0, 1.5, ... 5.0
   for (const l of ratingsOnly) {
@@ -300,6 +306,7 @@ export default async function GamePage({ params }: GamePageProps) {
                   existingLog={existingLogForModal}
                   isWishlisted={currentUserLog?.status === "wishlist"}
                   gameId={game.id}
+                  isUnreleased={isUnreleased}
                 />
               ) : (
                 <Link
@@ -414,6 +421,9 @@ export default async function GamePage({ params }: GamePageProps) {
                 <span className="text-[11px] uppercase tracking-wider">IGDB</span>
               </div>
             )}
+
+            {/* Awards */}
+            <GameAwards gameId={game.id} />
 
             {/* Where to Play */}
             {game.stores && game.stores.length > 0 && (

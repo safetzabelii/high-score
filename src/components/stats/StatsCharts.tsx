@@ -1,6 +1,6 @@
 "use client"
 
-import { Gamepad2, Heart, Clock, BarChart3 } from "lucide-react"
+import { Heart } from "lucide-react"
 
 interface StatsChartsProps {
   totalGames: number
@@ -42,59 +42,61 @@ export function StatsCharts({
   const maxRating = Math.max(...Object.values(ratingDist), 1)
   const maxMonthly = Math.max(...monthlyActivity.map((m) => m.count), 1)
   const maxPlatform = topPlatforms.length > 0 ? topPlatforms[0][1] : 1
+  const completedCount = statusCounts.completed ?? 0
 
   return (
-    <div className="space-y-8">
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-center">
-          <Gamepad2 className="h-5 w-5 mx-auto mb-1 text-hs-green" />
-          <p className="text-2xl font-bold text-zinc-100 tabular-nums">{totalGames}</p>
-          <p className="text-xs text-zinc-500">Games Logged</p>
-        </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-center">
-          <Heart className="h-5 w-5 mx-auto mb-1 fill-[#ff0055] text-[#ff0055]" />
-          <p className="text-2xl font-bold text-zinc-100 tabular-nums">
-            {avgRating?.toFixed(1) ?? "—"}
-          </p>
-          <p className="text-xs text-zinc-500">Avg Rating</p>
-        </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-center">
-          <Clock className="h-5 w-5 mx-auto mb-1 text-emerald-400" />
-          <p className="text-2xl font-bold text-zinc-100 tabular-nums">{totalPlaytime}</p>
-          <p className="text-xs text-zinc-500">Hours Played</p>
-        </div>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 text-center">
-          <BarChart3 className="h-5 w-5 mx-auto mb-1 text-purple-400" />
-          <p className="text-2xl font-bold text-zinc-100 tabular-nums">
-            {statusCounts.played ?? 0}
-          </p>
-          <p className="text-xs text-zinc-500">Completed</p>
-        </div>
+    <div className="space-y-10">
+      {/* Inline summary stats */}
+      <div className="flex items-center gap-3 text-[14px] flex-wrap pb-4 border-b border-zinc-800/60">
+        <span className="text-zinc-400">
+          <span className="font-bold text-zinc-100 tabular-nums text-lg">{totalGames}</span> Games
+        </span>
+        <span className="text-zinc-700">&middot;</span>
+        {avgRating != null && (
+          <>
+            <span className="flex items-center gap-1 text-zinc-400">
+              <Heart className="h-3.5 w-3.5 fill-[#ff0055] text-[#ff0055]" />
+              <span className="font-bold text-zinc-100 tabular-nums text-lg">{avgRating.toFixed(1)}</span> Avg
+            </span>
+            <span className="text-zinc-700">&middot;</span>
+          </>
+        )}
+        <span className="text-zinc-400">
+          <span className="font-bold text-zinc-100 tabular-nums text-lg">{totalPlaytime.toLocaleString()}</span> Hours
+        </span>
+        <span className="text-zinc-700">&middot;</span>
+        <span className="text-zinc-400">
+          <span className="font-bold text-zinc-100 tabular-nums text-lg">{completedCount}</span> Completed
+        </span>
       </div>
 
       {/* Rating distribution */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-        <h2 className="text-sm font-semibold text-zinc-200 mb-4">Rating Distribution</h2>
-        <div className="flex items-end gap-1 h-32">
+      <section>
+        <h2 className="section-heading mb-3">Rating distribution</h2>
+        <div className="flex items-end gap-[3px] h-24">
           {Object.entries(ratingDist).map(([rating, count]) => (
-            <div key={rating} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full flex flex-col justify-end h-24">
-                <div
-                  className="w-full rounded-t bg-hs-green/80 transition-all min-h-[2px]"
-                  style={{ height: `${(count / maxRating) * 100}%` }}
-                />
-              </div>
-              <span className="text-[9px] text-zinc-600 tabular-nums">{rating}</span>
+            <div key={rating} className="flex-1 flex items-end h-full group">
+              <div
+                className="w-full bg-zinc-700 hover:bg-[#ff0055] transition-colors rounded-t-[1px]"
+                style={{
+                  height: count > 0 ? `${Math.max((count / maxRating) * 100, 4)}%` : "2px",
+                  opacity: count > 0 ? 1 : 0.15,
+                }}
+                title={`${rating}: ${count} game${count !== 1 ? "s" : ""}`}
+              />
             </div>
           ))}
         </div>
-      </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-[9px] text-zinc-600">½</span>
+          <span className="text-[9px] text-zinc-600">★★★★★</span>
+        </div>
+      </section>
 
       {/* Status breakdown */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-        <h2 className="text-sm font-semibold text-zinc-200 mb-4">Status Breakdown</h2>
-        <div className="flex h-4 rounded-full overflow-hidden bg-zinc-800 mb-4">
+      <section>
+        <h2 className="section-heading mb-3">Status breakdown</h2>
+        <div className="flex h-3 rounded-full overflow-hidden bg-zinc-800 mb-3">
           {Object.entries(statusCounts).map(([status, count]) =>
             count > 0 ? (
               <div
@@ -105,62 +107,62 @@ export function StatsCharts({
             ) : null
           )}
         </div>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-x-5 gap-y-1">
           {Object.entries(statusCounts).map(([status, count]) => (
             <div key={status} className="flex items-center gap-2">
-              <div className={`h-3 w-3 rounded-full ${STATUS_COLORS[status]}`} />
-              <span className="text-xs text-zinc-400">
-                {STATUS_LABELS[status]} ({count})
+              <div className={`h-2.5 w-2.5 rounded-full ${STATUS_COLORS[status]}`} />
+              <span className="text-[12px] text-zinc-400">
+                {STATUS_LABELS[status]} <span className="text-zinc-600 tabular-nums">({count})</span>
               </span>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Monthly activity */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-        <h2 className="text-sm font-semibold text-zinc-200 mb-4">Monthly Activity</h2>
-        <div className="flex items-end gap-1 h-32">
+      <section>
+        <h2 className="section-heading mb-3">Monthly activity</h2>
+        <div className="flex items-end gap-[3px] h-20">
           {monthlyActivity.map((m) => (
-            <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full flex flex-col justify-end h-24">
-                {m.count > 0 && (
-                  <span className="text-[9px] text-zinc-500 text-center tabular-nums mb-0.5">
-                    {m.count}
-                  </span>
-                )}
-                <div
-                  className="w-full rounded-t bg-emerald-500/70 transition-all min-h-[2px]"
-                  style={{ height: `${(m.count / maxMonthly) * 100}%` }}
-                />
-              </div>
-              <span className="text-[8px] text-zinc-600">{m.month}</span>
+            <div key={m.month} className="flex-1 flex flex-col items-center gap-0.5 h-full justify-end">
+              <div
+                className="w-full bg-emerald-500/70 hover:bg-emerald-400 transition-colors rounded-t-[1px]"
+                style={{
+                  height: m.count > 0 ? `${Math.max((m.count / maxMonthly) * 100, 4)}%` : "2px",
+                  opacity: m.count > 0 ? 1 : 0.15,
+                }}
+                title={`${m.month}: ${m.count} game${m.count !== 1 ? "s" : ""}`}
+              />
             </div>
           ))}
         </div>
-      </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-[8px] text-zinc-600">{monthlyActivity[0]?.month}</span>
+          <span className="text-[8px] text-zinc-600">{monthlyActivity[monthlyActivity.length - 1]?.month}</span>
+        </div>
+      </section>
 
       {/* Top platforms */}
       {topPlatforms.length > 0 && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <h2 className="text-sm font-semibold text-zinc-200 mb-4">Top Platforms</h2>
+        <section>
+          <h2 className="section-heading mb-3">Top platforms</h2>
           <div className="space-y-2">
             {topPlatforms.map(([plat, count]) => (
               <div key={plat} className="flex items-center gap-3">
-                <span className="text-xs text-zinc-400 w-28 truncate">{plat}</span>
-                <div className="flex-1 h-3 rounded-full bg-zinc-800 overflow-hidden">
+                <span className="text-[12px] text-zinc-400 w-24 truncate">{plat}</span>
+                <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-purple-500/70"
+                    className="h-full rounded-full bg-purple-500/60"
                     style={{ width: `${(count / maxPlatform) * 100}%` }}
                   />
                 </div>
-                <span className="text-xs text-zinc-500 tabular-nums w-6 text-right">
+                <span className="text-[11px] text-zinc-600 tabular-nums w-6 text-right">
                   {count}
                 </span>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
     </div>
   )

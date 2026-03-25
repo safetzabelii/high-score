@@ -13,6 +13,7 @@ export function Footer() {
             <Link href="/activity" className="hover:text-zinc-300 transition-colors">Activity</Link>
             <Link href="/stats" className="hover:text-zinc-300 transition-colors">Stats</Link>
             <Link href="/compare" className="hover:text-zinc-300 transition-colors">Compare</Link>
+            <Link href="/roadmap" className="hover:text-zinc-300 transition-colors">Roadmap</Link>
           </nav>
 
           {/* Right: Brand dots */}

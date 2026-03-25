@@ -7,7 +7,7 @@
 import { createClient } from '@/lib/supabase/server'
 import {
   getFeaturedGames,
-  getPopularGames,
+  getPopularThisWeek,
   getRecentReleases,
   getAnticipatedGames,
   getTopRatedGames,
@@ -185,7 +185,7 @@ async function fetchAndCacheDiscover(
     arcadeRaw,
   ] = await Promise.all([
     getFeaturedGames(5).catch(() => []),
-    getPopularGames(20).catch(() => []),
+    getPopularThisWeek(20).catch(() => []),
     getRecentReleases(20).catch(() => []),
     getAnticipatedGames(20).catch(() => []),
     getTopRatedGames(20).catch(() => []),

@@ -99,14 +99,32 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   ])
 
   let isFollowing = false
+  let isBlocked = false
+  let isBlockedBy = false
   if (currentUser && currentUser.id !== profile.id) {
-    const { data: followRow } = await supabase
-      .from("follows")
-      .select("follower_id")
-      .eq("follower_id", currentUser.id)
-      .eq("following_id", profile.id)
-      .single()
+    const [{ data: followRow }, { data: blockedRow }, { data: blockedByRow }] = await Promise.all([
+      supabase
+        .from("follows")
+        .select("follower_id")
+        .eq("follower_id", currentUser.id)
+        .eq("following_id", profile.id)
+        .single(),
+      supabase
+        .from("blocks")
+        .select("id")
+        .eq("blocker_id", currentUser.id)
+        .eq("blocked_id", profile.id)
+        .single(),
+      supabase
+        .from("blocks")
+        .select("id")
+        .eq("blocker_id", profile.id)
+        .eq("blocked_id", currentUser.id)
+        .single(),
+    ])
     isFollowing = !!followRow
+    isBlocked = !!blockedRow
+    isBlockedBy = !!blockedByRow
   }
 
   const isOwn = currentUser?.id === profile.id
@@ -161,7 +179,12 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
         isOwn={isOwn}
         isFollowing={isFollowing}
         currentUserId={currentUser?.id ?? null}
+        isBlocked={isBlocked}
+        isBlockedBy={isBlockedBy}
       />
+
+      {/* Hide profile content when blocked */}
+      {(isBlocked || isBlockedBy) ? null : <>
 
       {/* Favorite Games */}
       {(favorites.length > 0 || isOwn) && (
@@ -216,6 +239,8 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
           </div>
         </section>
       )}
+
+      </>}
     </div>
   )
 }

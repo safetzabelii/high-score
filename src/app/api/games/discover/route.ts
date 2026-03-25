@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import {
-  getPopularGames,
+  getPopularThisWeek,
   getAnticipatedGames,
   getRecentReleases,
   getTopRatedGames,
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     switch (category) {
       case "popular":
-        rawGames = await getPopularGames(limit, offset)
+        rawGames = await getPopularThisWeek(limit, offset)
         break
       case "anticipated":
         rawGames = await getAnticipatedGames(limit, offset)
@@ -80,24 +80,27 @@ export async function GET(request: Request) {
       case "comingSoon":
         rawGames = await getComingSoon(limit, offset)
         break
-      case "community":
-        // For community, we fetch from Supabase
+      case "community": {
+        // For community, we fetch from Supabase — over-fetch to get enough unique games
         const supabase = await createClient()
-        const { data } = await supabase
+        const fetchSize = (limit + offset) * 3 // over-fetch to account for duplicates
+        const { data } = await (supabase
           .from("game_logs")
-          .select("game_id, games(*)")
+          .select("game_id, games(id, title, slug, cover_url, release_year)")
           .order("created_at", { ascending: false })
-          .range(offset, offset + limit - 1)
-        
+          .limit(fetchSize) as any)
+
         const seenIds = new Set<number>()
-        const communityGames: any[] = []
+        const allUnique: any[] = []
         for (const log of (data ?? [])) {
           if (log.games && !seenIds.has(log.game_id)) {
             seenIds.add(log.game_id)
-            communityGames.push(log.games)
+            allUnique.push(log.games)
           }
         }
-        return NextResponse.json({ games: communityGames, hasMore: communityGames.length > 0 })
+        const communityGames = allUnique.slice(offset, offset + limit)
+        return NextResponse.json({ games: communityGames, hasMore: allUnique.length > offset + limit })
+      }
       default:
         return NextResponse.json({ error: "Invalid category" }, { status: 400 })
     }

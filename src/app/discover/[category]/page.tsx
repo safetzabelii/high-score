@@ -34,19 +34,38 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
 
   if (!user) redirect(`/login?redirectTo=/discover/${category}`)
 
-  // Fetch initial batch serverside for SEO / speed
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/games/discover?category=${category}&limit=30&offset=0`, {
-    next: { revalidate: 1800 }
-  })
-  
   let initialGames: BaseGame[] = []
   let hasMore = true
 
-  if (res.ok) {
-    const data = await res.json()
-    initialGames = data.games || []
-    hasMore = data.hasMore ?? true
+  if (category === "community") {
+    // Community data comes from Supabase directly (needs auth cookies)
+    const { data: recentLogs } = await (supabase
+      .from("game_logs")
+      .select("game_id, games(id, title, slug, cover_url, release_year)")
+      .order("created_at", { ascending: false })
+      .limit(120) as any)
+
+    const seen = new Set<number>()
+    for (const log of (recentLogs ?? []) as any[]) {
+      if (log.games && !seen.has(log.game_id)) {
+        seen.add(log.game_id)
+        initialGames.push(log.games)
+        if (initialGames.length >= 30) break
+      }
+    }
+    hasMore = initialGames.length >= 30
+  } else {
+    // Other categories fetch via API (no auth needed)
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const res = await fetch(`${baseUrl}/api/games/discover?category=${category}&limit=30&offset=0`, {
+      next: { revalidate: 1800 }
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      initialGames = data.games || []
+      hasMore = data.hasMore ?? true
+    }
   }
 
   return <CategoryClient category={category} initialGames={initialGames} initialHasMore={hasMore} />

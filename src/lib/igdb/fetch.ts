@@ -179,6 +179,21 @@ offset ${offset};`
   )
 }
 
+export async function getPopularThisWeek(limit = 20, offset = 0): Promise<IgdbGame[]> {
+  // Games released in the last ~12 months with the most player engagement
+  // Sorted by rating_count = most actively rated/played games RIGHT NOW
+  const now = Math.floor(Date.now() / 1000)
+  const twelveMonthsAgo = now - (365 * 24 * 60 * 60)
+  return igdbFetch<IgdbGame[]>(
+    'games',
+    `${GAME_FIELDS}
+where first_release_date > ${twelveMonthsAgo} & first_release_date < ${now} & rating_count > 5 & cover != null & parent_game = null & version_parent = null;
+sort rating_count desc;
+limit ${limit};
+offset ${offset};`
+  )
+}
+
 export async function getFeaturedGames(limit = 5, offset = 0): Promise<IgdbGame[]> {
   // Recent popular games from the last 6 months — not all-time
   const now = Math.floor(Date.now() / 1000)
@@ -230,11 +245,15 @@ offset ${offset};`
 }
 
 export async function getHiddenGems(limit = 20, offset = 0): Promise<IgdbGame[]> {
+  // Hidden gems: truly obscure games with high ratings but minimal mainstream attention
+  // - rating_count 15-50: enough votes to be credible, too few to be well-known
+  // - total_rating 75-95: high quality but caps at 95 to filter vote-stuffed entries
+  // - No aggregated_rating_count requirement (that would filter IN mainstream games)
   return igdbFetch<IgdbGame[]>(
     'games',
     `${GAME_FIELDS}
-where rating_count > 100 & rating_count < 500 & rating > 82 & cover != null;
-sort rating desc;
+where rating_count > 15 & rating_count < 50 & total_rating > 75 & total_rating < 95 & cover != null & parent_game = null & version_parent = null;
+sort total_rating desc;
 limit ${limit};
 offset ${offset};`
   )

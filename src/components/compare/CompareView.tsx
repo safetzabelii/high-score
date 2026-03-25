@@ -96,20 +96,19 @@ export function CompareView({
       {/* Comparison results */}
       {comparison && (
         <div className="space-y-4">
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-              <p className="text-lg font-bold text-zinc-100">{comparison.myTotal}</p>
-              <p className="text-xs text-zinc-500">Your games</p>
-            </div>
-            <div className="rounded-lg border border-hs-green/30 bg-hs-green/10 p-3">
-              <p className="text-lg font-bold text-hs-green">{comparison.commonGames.length}</p>
-              <p className="text-xs text-zinc-500">In common</p>
-            </div>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
-              <p className="text-lg font-bold text-zinc-100">{comparison.theirTotal}</p>
-              <p className="text-xs text-zinc-500">{comparison.otherUser.display_name}&apos;s</p>
-            </div>
+          {/* Summary — inline stats */}
+          <div className="flex items-center gap-3 text-[13px] flex-wrap py-2 border-b border-zinc-800/60">
+            <span className="text-zinc-400">
+              <span className="font-bold text-zinc-100 tabular-nums">{comparison.myTotal}</span> Your games
+            </span>
+            <span className="text-zinc-700">&middot;</span>
+            <span className="text-zinc-400">
+              <span className="font-bold text-[#ff0055] tabular-nums">{comparison.commonGames.length}</span> In common
+            </span>
+            <span className="text-zinc-700">&middot;</span>
+            <span className="text-zinc-400">
+              <span className="font-bold text-zinc-100 tabular-nums">{comparison.theirTotal}</span> {comparison.otherUser.display_name}&apos;s games
+            </span>
           </div>
 
           {/* Common games table */}

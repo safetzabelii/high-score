@@ -3,7 +3,10 @@
 import { useState, useRef } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { User as UserIcon, Loader2, Check, Upload, EyeOff, Eye, Download } from "lucide-react"
+import {
+  User as UserIcon, Loader2, Check, Upload, EyeOff, Eye, Download,
+  FileUp, AlertTriangle, Trash2
+} from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
@@ -70,6 +73,17 @@ export function SettingsForm({ profile }: SettingsFormProps) {
   const [bannerDirty, setBannerDirty] = useState(false)
   const [isDraggingBanner, setIsDraggingBanner] = useState(false)
   const dragStartRef = useRef<{ y: number; startBannerY: number } | null>(null)
+
+  // Import state
+  const [steamId, setSteamId] = useState("")
+  const [importingSteam, setImportingSteam] = useState(false)
+  const csvInputRef = useRef<HTMLInputElement>(null)
+  const [importingCsv, setImportingCsv] = useState(false)
+
+  // Account deletion state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
+  const [deleting, setDeleting] = useState(false)
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -163,6 +177,73 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     window.addEventListener("mouseup", handleEnd)
     window.addEventListener("touchmove", handleMove)
     window.addEventListener("touchend", handleEnd)
+  }
+
+  async function handleSteamImport() {
+    if (!steamId.trim()) {
+      toast.error("Enter your Steam ID or profile URL")
+      return
+    }
+    setImportingSteam(true)
+    try {
+      const res = await fetch("/api/import/steam", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ steamId: steamId.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Steam import failed")
+      toast.success(`Imported ${data.imported} games! (${data.skipped} skipped)`)
+      setSteamId("")
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to import from Steam")
+    } finally {
+      setImportingSteam(false)
+    }
+  }
+
+  async function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportingCsv(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/import/csv", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "CSV import failed")
+      let msg = `Imported ${data.imported} games!`
+      if (data.skipped > 0) msg += ` (${data.skipped} skipped)`
+      if (data.failed?.length > 0) msg += ` — ${data.failed.length} couldn't be matched.`
+      toast.success(msg)
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to import CSV")
+    } finally {
+      setImportingCsv(false)
+      if (csvInputRef.current) csvInputRef.current.value = ""
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== profile.username) return
+    setDeleting(true)
+    try {
+      const res = await fetch("/api/account/delete", { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Failed to delete account")
+      toast.success("Account deleted. Goodbye!")
+      await supabase.auth.signOut()
+      router.push("/")
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to delete account")
+    } finally {
+      setDeleting(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -424,6 +505,136 @@ export function SettingsForm({ profile }: SettingsFormProps) {
           </>
         )}
       </button>
+
+      {/* ── Import Section ────────────────────────────────── */}
+      <div className="!mt-12 border-t border-zinc-800 pt-8">
+        <h2 className="text-lg font-semibold text-zinc-100 mb-1">Import</h2>
+        <p className="text-xs text-zinc-500 mb-6">Import your game library from other platforms.</p>
+
+        {/* Steam Import */}
+        <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 mb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <svg className="h-5 w-5 text-zinc-300 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.979 0C5.678 0 .511 4.86.022 10.935l6.432 2.658a3.387 3.387 0 0 1 1.912-.59c.064 0 .128.002.191.006l2.861-4.142V8.77c0-2.58 2.1-4.68 4.68-4.68 2.58 0 4.68 2.1 4.68 4.68s-2.1 4.682-4.68 4.682h-.109l-4.078 2.91c0 .048.003.097.003.146 0 1.94-1.577 3.516-3.516 3.516-1.694 0-3.112-1.2-3.44-2.795L.453 15.305A11.98 11.98 0 0 0 11.979 24c6.627 0 12-5.373 12-12S18.606 0 11.979 0z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-zinc-200">Steam Library</p>
+              <p className="text-xs text-zinc-500">Import your owned games from Steam</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={steamId}
+              onChange={(e) => setSteamId(e.target.value)}
+              placeholder="Steam ID or vanity URL (e.g. 76561198...)"
+              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-hs-green/30 focus:border-hs-green/50 transition-colors"
+            />
+            <button
+              type="button"
+              onClick={handleSteamImport}
+              disabled={importingSteam || !steamId.trim()}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-700 transition-colors border border-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {importingSteam ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+              {importingSteam ? "Importing..." : "Import"}
+            </button>
+          </div>
+          <p className="mt-2 text-[10px] text-zinc-600">
+            Your Steam profile must be set to public. Games are matched via IGDB.
+          </p>
+        </div>
+
+        {/* CSV Import */}
+        <div className="flex items-center justify-between rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <FileUp className="h-4 w-4 text-zinc-400" />
+            <div>
+              <p className="text-sm font-medium text-zinc-200">Import from CSV</p>
+              <p className="text-xs text-zinc-500">Upload a CSV file with your game data</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={importingCsv}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-700 transition-colors border border-zinc-700 disabled:opacity-50"
+          >
+            {importingCsv ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileUp className="h-3 w-3" />}
+            {importingCsv ? "Importing..." : "Upload CSV"}
+          </button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleCsvImport}
+            className="hidden"
+          />
+        </div>
+      </div>
+
+      {/* ── Danger Zone ───────────────────────────────────── */}
+      <div className="!mt-12 border-t border-red-900/30 pt-8">
+        <h2 className="text-lg font-semibold text-red-400 mb-1 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          Danger Zone
+        </h2>
+        <p className="text-xs text-zinc-500 mb-4">Irreversible actions. Proceed with caution.</p>
+
+        <div className="rounded-lg border border-red-900/40 bg-red-950/20 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-zinc-200">Delete Account</p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Permanently delete your account and all associated data including game logs, reviews, lists, follows, and favorites. This action cannot be undone.
+              </p>
+            </div>
+            {!showDeleteConfirm && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-red-950/50 border border-red-900/50 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/40 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="h-3 w-3" />
+                Delete
+              </button>
+            )}
+          </div>
+
+          {showDeleteConfirm && (
+            <div className="mt-4 border-t border-red-900/30 pt-4">
+              <p className="text-xs text-zinc-400 mb-2">
+                Type <span className="font-mono font-semibold text-red-400">{profile.username}</span> to confirm deletion:
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={profile.username}
+                  className="flex-1 rounded-lg border border-red-900/50 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== profile.username || deleting}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  {deleting ? "Deleting..." : "Permanently Delete"}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText("") }}
+                className="mt-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </form>
   )
 }

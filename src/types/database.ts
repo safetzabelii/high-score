@@ -85,6 +85,13 @@ export interface FavoriteGameRow {
   created_at: string
 }
 
+export interface BlockRow {
+  id: string
+  blocker_id: string
+  blocked_id: string
+  created_at: string
+}
+
 export type NotificationType = 'like' | 'follow' | 'comment'
 
 export interface NotificationRow {
@@ -185,6 +192,11 @@ export interface Database {
         Row: FavoriteGameRow
         Insert: Omit<FavoriteGameRow, 'id' | 'created_at'>
         Update: Partial<Pick<FavoriteGameRow, 'position'>>
+      }
+      blocks: {
+        Row: BlockRow
+        Insert: Omit<BlockRow, 'id' | 'created_at'>
+        Update: never
       }
     }
     Views: {

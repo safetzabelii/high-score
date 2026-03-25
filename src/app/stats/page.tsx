@@ -86,7 +86,7 @@ export default async function StatsPage() {
   const totalPlaytime = logs.reduce((s, l) => s + (l.playtime_hours ?? 0), 0)
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-[960px] px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-bold text-zinc-50 mb-6">My Stats</h1>
 
       {logs.length === 0 ? (
