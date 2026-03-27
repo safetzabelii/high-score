@@ -66,9 +66,9 @@ export function AddGameToList({ listId, existingGameIds, nextPosition }: AddGame
   }
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-      <p className="text-sm font-medium text-zinc-300 mb-2 flex items-center gap-1.5">
-        <Plus className="h-4 w-4" />
+    <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/30 p-4">
+      <p className="section-heading text-zinc-500 mb-2.5 flex items-center gap-1.5">
+        <Plus className="h-3.5 w-3.5 text-zinc-500" />
         Add a game
       </p>
       {adding ? (

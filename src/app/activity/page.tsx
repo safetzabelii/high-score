@@ -3,6 +3,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Clock, Gamepad2, Heart, MessageCircle, UserPlus, User as UserIcon } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { HeartRatingDisplay } from "@/components/shared/StarRating"
 import type { GameLogRow, GameRow, UserRow, LikeRow, CommentRow, FollowRow } from "@/types/database"
 
 export const metadata = {
@@ -160,7 +161,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
                 {log.games.title}
               </Link>
               {log.rating != null && log.rating > 0 && (
-                <span className="ml-1.5 text-yellow-500 text-xs">{"★".repeat(Math.round(log.rating))}</span>
+                <span className="ml-1.5 inline-flex align-middle"><HeartRatingDisplay rating={log.rating} /></span>
               )}
             </p>
           </div>

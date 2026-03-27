@@ -10,6 +10,7 @@ import { GameCover } from "@/components/shared/GameCover"
 import { getPopularThisWeek, getHiddenGems, getComingSoon, shapeGame, warmGameCache } from "@/lib/igdb/fetch"
 import { syncGamesToAlgolia } from "@/lib/igdb/algolia/client"
 import { CommunitySlider } from "@/components/home/CommunitySlider"
+import { cn } from "@/lib/utils"
 import type { UserRow, GameLogRow, GameRow } from "@/types/database"
 
 export default async function HomePage() {
@@ -347,7 +348,23 @@ export default async function HomePage() {
                         <Link href={`/profile/${entry.username}`} className="font-semibold text-zinc-400 hover:text-zinc-200 transition-colors">
                           {entry.display_name || entry.username}
                         </Link>
-                        <span className="text-zinc-600">&middot;</span>
+                        {entry.status && (
+                          <>
+                            <span className="text-zinc-700">&middot;</span>
+                            <span className={cn(
+                              "text-[11px]",
+                              entry.status === "completed" && "text-emerald-500/70",
+                              entry.status === "playing" && "text-blue-400/70",
+                              entry.status === "played" && "text-zinc-500",
+                              entry.status === "wishlist" && "text-purple-400/70",
+                              entry.status === "backlog" && "text-amber-400/70",
+                              entry.status === "abandoned" && "text-red-400/70",
+                            )}>
+                              {entry.status === "completed" ? "Completed" : entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                            </span>
+                          </>
+                        )}
+                        <span className="text-zinc-700">&middot;</span>
                         <span className="text-zinc-600">
                           {new Date(entry.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                         </span>

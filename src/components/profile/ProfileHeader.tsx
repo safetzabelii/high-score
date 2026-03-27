@@ -178,35 +178,9 @@ export function ProfileHeader({
               <span className="font-bold text-zinc-100 tabular-nums">{stats.followers}</span> Followers
             </span>
           </div>
-
-          {/* Rating distribution — compact bar chart */}
-          {totalRated > 0 && (
-            <div className="w-full sm:w-auto">
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Ratings</span>
-                <span className="text-[10px] text-zinc-600 tabular-nums">{totalRated}</span>
-              </div>
-              <div className="flex items-end gap-[2px] h-8 w-full sm:w-48">
-                {distEntries.map(([rating, count]) => (
-                  <div key={rating} className="flex-1 flex items-end h-full">
-                    <div
-                      className="w-full bg-zinc-700 hover:bg-[#ff0055] transition-colors rounded-t-[1px]"
-                      style={{
-                        height: count > 0 ? `${Math.max((count / maxDist) * 100, 8)}%` : "1px",
-                        opacity: count > 0 ? 1 : 0.15,
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between mt-0.5">
-                <span className="text-[7px] text-zinc-600">½</span>
-                <span className="text-[7px] text-zinc-600">★★★★★</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
     </div>
   )
 }

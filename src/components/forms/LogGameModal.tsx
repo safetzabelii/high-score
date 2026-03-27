@@ -127,7 +127,7 @@ export function LogGameModal({ open, onClose, preselectedGame, existingLog, forc
   // Form fields
   const [rating, setRating] = useState<number | null>(existingLog?.rating ?? null)
   const [status, setStatus] = useState<GameStatus>(existingLog?.status ?? "played")
-  const [reviewText, setReviewText] = useState(existingLog?.review_text ?? "")
+  const [reviewText, setReviewText] = useState(existingLog?.review_text === "__steam_import__" ? "" : (existingLog?.review_text ?? ""))
   const [platforms, setPlatforms] = useState<string[]>(existingLog?.platforms ?? [])
   const [playtime, setPlaytime] = useState(existingLog?.playtime_hours?.toString() ?? "")
   const [containsSpoilers, setContainsSpoilers] = useState(existingLog?.contains_spoilers ?? false)

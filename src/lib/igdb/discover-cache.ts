@@ -100,7 +100,7 @@ export async function getDiscoverData(): Promise<DiscoverCategories> {
   const { data: cached } = await supabase
     .from('page_cache')
     .select('data, fetched_at')
-    .eq('page_key', 'discover_v3')
+    .eq('page_key', 'discover_v4')
     .single()
 
   if (cached) {
@@ -231,7 +231,7 @@ async function fetchAndCacheDiscover(
     .from('page_cache')
     .upsert(
       {
-        page_key: 'discover_v3',
+        page_key: 'discover_v4',
         data: categories as any,
         fetched_at: new Date().toISOString(),
       },

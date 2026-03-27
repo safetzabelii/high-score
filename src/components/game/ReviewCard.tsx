@@ -73,7 +73,7 @@ export function ReviewCard({
       </div>
 
       {/* Review text — serif */}
-      {review.review_text && (
+      {review.review_text && review.review_text !== "__steam_import__" && (
         <div className="mb-3">
           <SpoilerGuard containsSpoilers={review.contains_spoilers}>
             <MarkdownText className="text-[15px] text-zinc-300">

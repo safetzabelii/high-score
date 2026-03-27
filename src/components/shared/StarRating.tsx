@@ -117,23 +117,26 @@ export function HeartRatingDisplay({
   size?: "sm" | "md"
 }) {
   const sizeClass = size === "sm" ? "h-[13px] w-[13px]" : "h-4 w-4"
+  const hasHalf = rating % 1 >= 0.5
+  const fullHearts = Math.floor(rating)
+  const color = ratingColor(rating)
 
   return (
     <div className="flex items-center gap-[2px]">
-      {Array.from({ length: 5 }).map((_, i) => {
-        const star = i + 1
-        const filled = rating >= star
-        const half = rating >= star - 0.5 && rating < star
-        const color = ratingColor(rating)
-
-        if (half) {
-          return <HeartHalf key={i} className={sizeClass} color={color} />
-        }
-        if (filled) {
-          return <HeartFull key={i} className={sizeClass} color={color} />
-        }
-        return null
-      })}
+      {Array.from({ length: fullHearts }).map((_, i) => (
+        <HeartFull key={i} className={sizeClass} color={color} />
+      ))}
+      {hasHalf && (
+        <span
+          className={cn(
+            "font-bold leading-none",
+            size === "sm" ? "text-[13px]" : "text-[15px]"
+          )}
+          style={{ color }}
+        >
+          ½
+        </span>
+      )}
     </div>
   )
 }

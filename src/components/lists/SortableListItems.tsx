@@ -130,8 +130,8 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
                 </div>
 
                 {/* Rank badge */}
-                <div className="absolute top-2 left-2 bg-zinc-950/80 backdrop-blur-sm w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold text-zinc-200 border border-zinc-700/50">
-                  {index + 1}
+                <div className="absolute top-2 left-2 bg-zinc-950/80 backdrop-blur-sm px-1.5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-zinc-300 border border-zinc-700/50 tabular-nums">
+                  #{index + 1}
                 </div>
               </div>
             </Link>
@@ -139,11 +139,15 @@ export function SortableListItems({ items: initialItems, listId, isOwner }: Sort
             {/* Owner controls overlay */}
             {isOwner && (
               <>
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <RemoveListItem itemId={item.id} />
+                <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-zinc-950/80 backdrop-blur-sm rounded-full border border-zinc-700/50">
+                    <RemoveListItem itemId={item.id} />
+                  </div>
                 </div>
-                <div className="absolute top-9 left-2 opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none z-10">
-                  <GripVertical className="h-4 w-4 text-zinc-300 drop-shadow" />
+                <div className="absolute top-9 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="bg-zinc-950/80 backdrop-blur-sm rounded p-0.5 border border-zinc-700/50">
+                    <GripVertical className="h-4 w-4 text-zinc-300" />
+                  </div>
                 </div>
               </>
             )}

@@ -15,8 +15,7 @@ export default async function NewListPage() {
   if (!user) redirect("/login?redirectTo=/lists/new")
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-bold text-zinc-50 mb-8">Create a List</h1>
+    <div className="mx-auto max-w-[960px] px-4 py-8 sm:py-10 sm:px-6">
       <CreateListForm />
     </div>
   )

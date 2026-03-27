@@ -193,7 +193,11 @@ export function SettingsForm({ profile }: SettingsFormProps) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Steam import failed")
-      toast.success(`Imported ${data.imported} games! (${data.skipped} skipped)`)
+      let msg = `Imported ${data.imported} games! (${data.skipped} skipped)`
+      if (data.failed?.length > 0) {
+        msg += ` — ${data.failed.length} couldn't be matched`
+      }
+      toast.success(msg)
       setSteamId("")
       router.refresh()
     } catch (err: any) {

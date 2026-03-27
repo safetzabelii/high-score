@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -82,6 +82,12 @@ export function GameLogGrid({ logs: initialLogs, activeStatus, username, isOwn, 
   const [allLogs, setAllLogs] = useState<LogEntry[]>(initialLogs)
   const [canLoadMore, setCanLoadMore] = useState(initialHasMore)
   const [loadingMore, setLoadingMore] = useState(false)
+
+  // Sync with server data when props change (e.g. after router.refresh())
+  useEffect(() => {
+    setAllLogs(initialLogs)
+    setCanLoadMore(initialHasMore)
+  }, [initialLogs, initialHasMore])
 
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editGame, setEditGame] = useState<GameSearchResult | null>(null)
@@ -248,10 +254,16 @@ export function GameLogGrid({ logs: initialLogs, activeStatus, username, isOwn, 
                       </div>
                     )}
 
-                    {/* Playthrough badge */}
+                    {/* Replay badge */}
                     {(log.playthrough_number ?? 1) > 1 && (
-                      <div className="absolute top-1 left-1 z-10 flex h-4 min-w-4 items-center justify-center rounded bg-hs-green/90 px-1 text-[8px] font-bold text-white">
-                        #{log.playthrough_number}
+                      <div className="absolute top-1 left-1 z-10 flex h-4 items-center gap-0.5 rounded bg-black/80 border border-amber-400/50 px-1.5 text-[8px] font-bold text-amber-400 shadow-md" title={`Playthrough #${log.playthrough_number}`}>
+                        <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 1l4 4-4 4" />
+                          <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                          <path d="M7 23l-4-4 4-4" />
+                          <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                        </svg>
+                        {log.playthrough_number}
                       </div>
                     )}
 
@@ -273,10 +285,7 @@ export function GameLogGrid({ logs: initialLogs, activeStatus, username, isOwn, 
                       </svg>
                     ))}
                     {log.rating % 1 >= 0.5 && (
-                      <svg viewBox="0 0 24 24" className="h-[10px] w-[10px]">
-                        <clipPath id={`hh-${log.id}`}><rect x="0" y="0" width="12" height="24" /></clipPath>
-                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.42 4.42 3 8.5 3c1.74 0 3.41.81 4.5 2.09C14.09 3.81 15.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#ff0055" clipPath={`url(#hh-${log.id})`} />
-                      </svg>
+                      <span className="text-[11px] font-bold leading-none" style={{ color: "#ff0055" }}>½</span>
                     )}
                   </div>
                 )}

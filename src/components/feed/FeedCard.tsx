@@ -92,7 +92,7 @@ export function FeedCard({ entry, currentUserId }: FeedCardProps) {
           )}
 
           {/* Review text */}
-          {entry.review_text && entry.review_text.trim().length > 0 && (
+          {entry.review_text && entry.review_text.trim().length > 0 && entry.review_text !== "__steam_import__" && (
             <div className="mt-1.5">
               <SpoilerGuard containsSpoilers={entry.contains_spoilers}>
                 <MarkdownText className="text-[13px] text-zinc-400" clamp={3}>

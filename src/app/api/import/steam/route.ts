@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server"
 import { igdbFetch, searchGames, shapeGame } from "@/lib/igdb/fetch"
 
 const STEAM_API_KEY = process.env.STEAM_API_KEY
-const MAX_GAMES = 200
 
 interface SteamGame {
   appid: number
@@ -15,7 +14,6 @@ interface SteamGame {
  * Resolve a Steam vanity URL to a 64-bit Steam ID.
  */
 async function resolveVanityUrl(vanityUrl: string): Promise<string | null> {
-  // Strip Steam profile URL parts if user pasted a full URL
   const cleaned = vanityUrl
     .replace(/https?:\/\/(www\.)?steamcommunity\.com\/id\//i, "")
     .replace(/https?:\/\/(www\.)?steamcommunity\.com\/profiles\//i, "")
@@ -48,15 +46,13 @@ async function fetchSteamGames(steamId: string): Promise<SteamGame[] | null> {
 
 /**
  * Batch-lookup IGDB game IDs by multiple Steam App IDs at once.
- * Queries up to 50 Steam IDs in a single IGDB request.
  */
 async function batchFindIgdbIds(
   steamAppIds: number[]
 ): Promise<Map<number, number>> {
-  const map = new Map<number, number>() // steamAppId → igdbGameId
+  const map = new Map<number, number>()
   if (steamAppIds.length === 0) return map
 
-  // IGDB allows querying multiple UIDs with the `|` operator
   const uidList = steamAppIds.map((id) => `"${id}"`).join(",")
 
   try {
@@ -78,22 +74,37 @@ async function batchFindIgdbIds(
 }
 
 /**
- * Fallback: search IGDB by game name (for games without external_games entries)
+ * Fallback: search IGDB by game name — more lenient matching
  */
-async function findIgdbByName(
-  name: string
-): Promise<number | null> {
+async function findIgdbByName(name: string): Promise<number | null> {
   try {
-    const results = await searchGames(name, 1)
-    if (results.length > 0) {
-      // Only accept if the name is a close enough match
-      const igdbName = results[0].name.toLowerCase()
-      const steamName = name.toLowerCase()
-      if (
-        igdbName === steamName ||
-        igdbName.includes(steamName) ||
-        steamName.includes(igdbName)
-      ) {
+    const results = await searchGames(name, 5)
+    if (results.length === 0) return null
+
+    const steamName = name.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim()
+
+    // Try exact match first
+    for (const r of results) {
+      const igdbName = r.name.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim()
+      if (igdbName === steamName) return r.id
+    }
+
+    // Try contains match
+    for (const r of results) {
+      const igdbName = r.name.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim()
+      if (igdbName.includes(steamName) || steamName.includes(igdbName)) {
+        return r.id
+      }
+    }
+
+    // Try first-word match for short names (e.g. "INSIDE" → "Inside")
+    if (steamName.split(" ").length <= 2 && results[0]) {
+      const firstResult = results[0].name.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim()
+      // Accept if >80% of words match
+      const steamWords = steamName.split(" ")
+      const igdbWords = firstResult.split(" ")
+      const matching = steamWords.filter(w => igdbWords.includes(w))
+      if (matching.length >= steamWords.length * 0.8) {
         return results[0].id
       }
     }
@@ -103,10 +114,46 @@ async function findIgdbByName(
   return null
 }
 
+/**
+ * Batch fetch full game data from IGDB for multiple IDs at once
+ */
+async function batchFetchGameData(
+  igdbIds: number[]
+): Promise<Map<number, { id: number; title: string; slug: string; cover_url: string | null; release_year: number | null }>> {
+  const map = new Map()
+  if (igdbIds.length === 0) return map
+
+  try {
+    const idList = igdbIds.join(",")
+    const results = await igdbFetch<any[]>(
+      "games",
+      `fields id, name, slug, cover.url, first_release_date; where id = (${idList}); limit 500;`
+    )
+    for (const r of results) {
+      const coverUrl = r.cover?.url
+        ? "https:" + r.cover.url.replace("t_thumb", "t_cover_big")
+        : null
+      map.set(r.id, {
+        id: r.id,
+        title: r.name,
+        slug: r.slug,
+        cover_url: coverUrl,
+        release_year: r.first_release_date
+          ? new Date(r.first_release_date * 1000).getFullYear()
+          : null,
+      })
+    }
+  } catch (err) {
+    console.error("[steam-import] batch game fetch failed:", err)
+  }
+
+  return map
+}
+
 export async function POST(request: Request) {
   if (!STEAM_API_KEY) {
     return NextResponse.json(
-      { error: "Steam API key is not configured. Please set the STEAM_API_KEY environment variable." },
+      { error: "Steam API key is not configured." },
       { status: 500 }
     )
   }
@@ -143,7 +190,7 @@ export async function POST(request: Request) {
     steamId = resolved
   }
 
-  // Fetch Steam library
+  // Fetch Steam library — ALL games, no limit
   const steamGames = await fetchSteamGames(steamId)
   if (!steamGames) {
     return NextResponse.json(
@@ -159,10 +206,9 @@ export async function POST(request: Request) {
     )
   }
 
-  // Sort by playtime (most played first) and limit
+  // Sort by playtime (most played first) — import ALL games
   const sortedGames = [...steamGames]
     .sort((a, b) => b.playtime_forever - a.playtime_forever)
-    .slice(0, MAX_GAMES)
 
   const total = sortedGames.length
 
@@ -178,6 +224,7 @@ export async function POST(request: Request) {
 
   let imported = 0
   let skipped = 0
+  const failed: string[] = []
 
   // Phase 1: Batch lookup all Steam App IDs via IGDB external_games (fast)
   const BATCH_SIZE = 50
@@ -189,7 +236,6 @@ export async function POST(request: Request) {
     for (const [steamAppId, igdbId] of batchResult) {
       steamToIgdb.set(steamAppId, igdbId)
     }
-    // Respect IGDB rate limits (4 req/s)
     if (i + BATCH_SIZE < sortedGames.length) {
       await new Promise((r) => setTimeout(r, 300))
     }
@@ -197,22 +243,48 @@ export async function POST(request: Request) {
 
   console.log(`[steam-import] Batch lookup matched ${steamToIgdb.size}/${total} games via external_games`)
 
-  // Phase 2: For top unmatched games (by playtime), try name search as fallback
+  // Phase 2: For ALL unmatched games with playtime, try name search as fallback
+  // No limit — search all unmatched games that have been played
   const unmatchedWithPlaytime = sortedGames
-    .filter((g) => !steamToIgdb.has(g.appid) && g.playtime_forever > 60) // only if >1hr played
-    .slice(0, 30) // limit fallback searches
+    .filter((g) => !steamToIgdb.has(g.appid) && g.playtime_forever > 30) // >30min played
 
   for (const game of unmatchedWithPlaytime) {
     const igdbId = await findIgdbByName(game.name)
     if (igdbId) {
       steamToIgdb.set(game.appid, igdbId)
+    } else {
+      failed.push(game.name)
     }
     await new Promise((r) => setTimeout(r, 300))
   }
 
-  console.log(`[steam-import] After name fallback: ${steamToIgdb.size}/${total} matched`)
+  console.log(`[steam-import] After name fallback: ${steamToIgdb.size}/${total} matched, ${failed.length} unmatched`)
 
-  // Phase 3: Import matched games
+  // Phase 3: Batch fetch game data from IGDB (instead of one-by-one)
+  const igdbIdsToFetch = new Set<number>()
+  for (const steamGame of sortedGames) {
+    const igdbId = steamToIgdb.get(steamGame.appid)
+    if (igdbId && !existingGameIds.has(igdbId)) {
+      igdbIdsToFetch.add(igdbId)
+    }
+  }
+
+  const gameDataMap = new Map()
+  const idsArray = [...igdbIdsToFetch]
+  for (let i = 0; i < idsArray.length; i += BATCH_SIZE) {
+    const batch = idsArray.slice(i, i + BATCH_SIZE)
+    const batchData = await batchFetchGameData(batch)
+    for (const [id, data] of batchData) {
+      gameDataMap.set(id, data)
+    }
+    if (i + BATCH_SIZE < idsArray.length) {
+      await new Promise((r) => setTimeout(r, 300))
+    }
+  }
+
+  // Phase 4: Bulk upsert games and insert logs
+  const today = new Date().toISOString().split("T")[0]
+
   for (const steamGame of sortedGames) {
     const igdbGameId = steamToIgdb.get(steamGame.appid)
     if (!igdbGameId) continue
@@ -222,31 +294,12 @@ export async function POST(request: Request) {
       continue
     }
 
-    // Fetch full game data from IGDB
-    let gameData
-    try {
-      const shaped = shapeGame(
-        (await igdbFetch<any[]>(
-          "games",
-          `fields id, name, slug, cover.url, first_release_date, genres.name, platforms.name, platforms.abbreviation, rating, rating_count, involved_companies.company.name, involved_companies.developer, involved_companies.publisher; where id = ${igdbGameId}; limit 1;`
-        ))[0]
-      )
-      if (!shaped) { skipped++; continue }
-      gameData = shaped
-    } catch {
-      skipped++
-      continue
-    }
+    const gameData = gameDataMap.get(igdbGameId)
+    if (!gameData) { skipped++; continue }
 
     // Upsert into games table
     const { error: gameError } = await (supabase.from("games") as any).upsert(
-      {
-        id: gameData.id,
-        title: gameData.title,
-        slug: gameData.slug,
-        cover_url: gameData.cover_url,
-        release_year: gameData.release_year,
-      },
+      gameData,
       { onConflict: "id" }
     )
 
@@ -256,7 +309,7 @@ export async function POST(request: Request) {
       continue
     }
 
-    // Insert game_log
+    // Insert game_log — marked as steam import via import_source column
     const playtimeHours = steamGame.playtime_forever > 0
       ? Math.round(steamGame.playtime_forever / 60)
       : null
@@ -270,8 +323,9 @@ export async function POST(request: Request) {
       contains_spoilers: false,
       platforms: ["PC"],
       playtime_hours: playtimeHours,
-      logged_date: new Date().toISOString().split("T")[0],
+      logged_date: today,
       playthrough_number: 1,
+      import_source: "steam",
     })
 
     if (logError) {
@@ -284,5 +338,5 @@ export async function POST(request: Request) {
     imported++
   }
 
-  return NextResponse.json({ imported, skipped, total })
+  return NextResponse.json({ imported, skipped, failed: failed.slice(0, 20), total })
 }
