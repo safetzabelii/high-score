@@ -131,7 +131,7 @@ export default async function GamePage({ params }: GamePageProps) {
       .in("log_id", reviewIds.length > 0 ? reviewIds : [""]) as any,
     (supabase
       .from("list_items")
-      .select("list_id, lists(id, title, user_id, users(username, display_name))")
+      .select("list_id, lists(id, title, is_public, user_id, users(username, display_name, avatar_url), list_items(game_id, position, games(cover_url)))")
       .eq("game_id", game.id)
       .limit(6) as any),
   ])
@@ -156,8 +156,10 @@ export default async function GamePage({ params }: GamePageProps) {
     lists: {
       id: string
       title: string
+      is_public: boolean
       user_id: string
-      users: { username: string; display_name: string }
+      users: { username: string; display_name: string; avatar_url: string | null }
+      list_items: { game_id: number; position: number; games: { cover_url: string | null } | null }[]
     } | null
   }
   const listsFeaturingRaw = (listsFeaturingRes.data ?? []) as ListFeaturing[]
@@ -166,8 +168,16 @@ export default async function GamePage({ params }: GamePageProps) {
     .map((item) => ({
       id: item.lists!.id,
       title: item.lists!.title,
+      isPublic: item.lists!.is_public,
       username: item.lists!.users.username,
       displayName: item.lists!.users.display_name,
+      avatarUrl: item.lists!.users.avatar_url,
+      covers: (item.lists!.list_items ?? [])
+        .sort((a, b) => a.position - b.position)
+        .map((i) => i.games?.cover_url)
+        .filter(Boolean)
+        .slice(0, 5) as string[],
+      itemCount: item.lists!.list_items?.length ?? 0,
     }))
   // Deduplicate by list id
   const seenListIds = new Set<string>()
@@ -419,14 +429,6 @@ export default async function GamePage({ params }: GamePageProps) {
               </div>
             )}
 
-            {/* IGDB rating */}
-            {game.rating != null && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-zinc-500">
-                <Heart className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                <span className="font-semibold text-zinc-200 tabular-nums">{game.rating.toFixed(1)}</span>
-                <span className="text-[11px] uppercase tracking-wider">IGDB</span>
-              </div>
-            )}
 
             {/* Awards */}
             <GameAwards gameId={game.id} />
@@ -461,21 +463,51 @@ export default async function GamePage({ params }: GamePageProps) {
         {uniqueLists.length > 0 && (
           <div className="mt-12">
             <SectionHeading title="Featured in lists" />
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {uniqueLists.map((list) => (
                 <Link
                   key={list.id}
                   href={`/lists/${list.id}`}
-                  className="flex items-center gap-3 rounded-lg border border-zinc-800/60 bg-zinc-900/40 px-4 py-3 hover:border-zinc-700 transition-colors group"
+                  className="group rounded-lg border border-zinc-800/60 bg-zinc-900/30 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all overflow-hidden"
                 >
-                  <ListIcon className="h-4 w-4 text-zinc-600 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-zinc-200 group-hover:text-zinc-50 truncate transition-colors">
+                  {/* Cover mosaic */}
+                  <div className="relative h-20 bg-zinc-800/50 overflow-hidden">
+                    {list.covers.length > 0 ? (
+                      <div className="flex h-full">
+                        {list.covers.map((url, i) => (
+                          <div key={i} className="relative flex-1 h-full">
+                            <Image
+                              src={url}
+                              alt=""
+                              fill
+                              className="object-cover"
+                              sizes="120px"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <ListIcon className="h-6 w-6 text-zinc-700" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/80 to-transparent" />
+                  </div>
+
+                  {/* Info */}
+                  <div className="px-3 py-2.5">
+                    <p className="text-[13px] font-semibold text-zinc-200 group-hover:text-zinc-100 truncate transition-colors">
                       {list.title}
                     </p>
-                    <p className="text-[11px] text-zinc-500 truncate">
-                      by {list.displayName || list.username}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-zinc-500">by {list.displayName || list.username}</span>
+                      {list.itemCount > 0 && (
+                        <>
+                          <span className="text-zinc-700 text-[11px]">&middot;</span>
+                          <span className="text-[11px] text-zinc-500">{list.itemCount} {list.itemCount === 1 ? "game" : "games"}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </Link>
               ))}

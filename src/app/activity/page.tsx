@@ -152,8 +152,8 @@ function ActivityRow({ item }: { item: ActivityItem }) {
             ) : null}
           </Link>
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-zinc-300">
-              <span className="text-zinc-500">{statusLabel[log.status] ?? "Logged"}</span>{" "}
+            <div className="text-sm text-zinc-300 flex items-center flex-wrap gap-x-1">
+              <span className="text-zinc-500">{statusLabel[log.status] ?? "Logged"}</span>
               <Link
                 href={`/game/${log.games.slug}`}
                 className="font-medium text-zinc-100 hover:text-zinc-50"
@@ -161,9 +161,9 @@ function ActivityRow({ item }: { item: ActivityItem }) {
                 {log.games.title}
               </Link>
               {log.rating != null && log.rating > 0 && (
-                <span className="ml-1.5 inline-flex align-middle"><HeartRatingDisplay rating={log.rating} /></span>
+                <span className="ml-0.5 inline-flex align-middle"><HeartRatingDisplay rating={log.rating} /></span>
               )}
-            </p>
+            </div>
           </div>
           <span className="text-xs text-zinc-600 flex-shrink-0">{time}</span>
         </div>

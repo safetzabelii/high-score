@@ -223,7 +223,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
             const totalRated = distEntries.reduce((s, [, c]) => s + c, 0)
             if (totalRated === 0) return null
             return (
-              <div className="w-full sm:w-64 self-stretch flex flex-col">
+              <div className="w-full sm:w-64 sm:min-h-[160px] self-stretch flex flex-col">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Ratings</span>
                   <span className="text-[11px] text-zinc-600 tabular-nums">{totalRated}</span>

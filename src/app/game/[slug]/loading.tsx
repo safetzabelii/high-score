@@ -103,12 +103,6 @@ export default function GameDetailLoading() {
               ))}
             </div>
 
-            {/* IGDB rating */}
-            <div className="mt-5 flex items-center gap-2">
-              <div className="h-4 w-4 rounded bg-zinc-800/40 skeleton-pulse" />
-              <div className="h-4 w-8 rounded bg-zinc-800/50 skeleton-pulse" />
-              <div className="h-3 w-8 rounded bg-zinc-800/30 skeleton-pulse" />
-            </div>
           </div>
         </div>
 

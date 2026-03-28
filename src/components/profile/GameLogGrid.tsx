@@ -64,6 +64,15 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "name",   label: "Name" },
 ]
 
+function deduplicateLogs(logs: LogEntry[]): LogEntry[] {
+  const seen = new Set<string>()
+  return logs.filter(log => {
+    if (seen.has(log.id)) return false
+    seen.add(log.id)
+    return true
+  })
+}
+
 function sortLogs(logs: LogEntry[], sortKey: SortKey): LogEntry[] {
   return [...logs].sort((a, b) => {
     if (sortKey === "rating") {
@@ -79,13 +88,13 @@ function sortLogs(logs: LogEntry[], sortKey: SortKey): LogEntry[] {
 export function GameLogGrid({ logs: initialLogs, activeStatus, username, isOwn, totalCount, statusCounts, userId, hasMore: initialHasMore, pageSize }: GameLogGridProps) {
   const router = useRouter()
   const [sortKey, setSortKey] = useState<SortKey>("date")
-  const [allLogs, setAllLogs] = useState<LogEntry[]>(initialLogs)
+  const [allLogs, setAllLogs] = useState<LogEntry[]>(() => deduplicateLogs(initialLogs))
   const [canLoadMore, setCanLoadMore] = useState(initialHasMore)
   const [loadingMore, setLoadingMore] = useState(false)
 
   // Sync with server data when props change (e.g. after router.refresh())
   useEffect(() => {
-    setAllLogs(initialLogs)
+    setAllLogs(deduplicateLogs(initialLogs))
     setCanLoadMore(initialHasMore)
   }, [initialLogs, initialHasMore])
 
@@ -111,7 +120,7 @@ export function GameLogGrid({ logs: initialLogs, activeStatus, username, isOwn, 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (query as any)
       if (data && data.length > 0) {
-        setAllLogs(prev => [...prev, ...data])
+        setAllLogs(prev => deduplicateLogs([...prev, ...data]))
         setCanLoadMore(data.length >= pageSize)
       } else {
         setCanLoadMore(false)
@@ -232,12 +241,12 @@ export function GameLogGrid({ logs: initialLogs, activeStatus, username, isOwn, 
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8">
-          {sorted.map((log) => {
+          {sorted.map((log, idx) => {
             const game = log.games
             if (!game) return null
 
             return (
-              <div key={log.id} className="group relative">
+              <div key={`${log.id}-${idx}`} className="group relative">
                 <Link href={`/game/${game.slug}`}>
                   <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-zinc-800 ring-1 ring-white/5 transition-all group-hover:ring-hs-green/50 group-hover:brightness-110">
                     {game.cover_url ? (

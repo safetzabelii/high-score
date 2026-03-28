@@ -596,15 +596,6 @@ export function DiscoverClient({ categories }: DiscoverClientProps) {
                                   <span>{game.developer}</span>
                                 </>
                               )}
-                              {game.rating != null && (
-                                <>
-                                  <span className="text-zinc-600">·</span>
-                                  <span className="flex items-center gap-1">
-                                    <Heart className="w-3 h-3 fill-[#ff0055] text-[#ff0055]" />
-                                    {game.rating.toFixed(1)}
-                                  </span>
-                                </>
-                              )}
                             </div>
 
                             {game.summary && (
@@ -681,12 +672,6 @@ function GameCard({ game }: { game: GameSearchResult }) {
             </p>
             <div className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
               {game.release_year && <span>{game.release_year}</span>}
-              {game.rating != null && (
-                <span className="flex items-center gap-0.5">
-                  <Heart className="h-3 w-3 fill-[#ff0055] text-[#ff0055]" />
-                  {game.rating.toFixed(1)}
-                </span>
-              )}
             </div>
           </div>
         </div>

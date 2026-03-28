@@ -218,33 +218,6 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 
           {/* Ratings row */}
           <div style={{ display: 'flex', gap: '36px', alignItems: 'center', marginTop: '20px' }}>
-            {/* IGDB rating */}
-            {game.rating && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '68px',
-                    height: '68px',
-                    borderRadius: '16px',
-                    background: game.rating >= 8 ? 'rgba(255,0,85,0.2)' : 'rgba(255,255,255,0.08)',
-                    border: `2px solid ${game.rating >= 8 ? 'rgba(255,0,85,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                    fontSize: 32,
-                    fontWeight: 800,
-                    color: game.rating >= 8 ? '#ff0055' : '#ffffff',
-                  }}
-                >
-                  {game.rating}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <span style={{ fontSize: 18, color: '#71717a', fontWeight: 700, letterSpacing: '0.08em' }}>IGDB</span>
-                  <span style={{ fontSize: 16, color: '#52525b' }}>SCORE</span>
-                </div>
-              </div>
-            )}
-
             {/* Community rating hearts */}
             {avgRating !== null && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>

@@ -132,6 +132,96 @@ export default async function HomePage() {
 
   const recentReviews = feedEntries.filter((e) => e.review_text && e.review_text.trim().length > 0).slice(0, 4)
 
+  // Community reviews — find the most-liked logs first, then fetch full data
+  const { data: topLikedRaw } = await (supabase
+    .from("likes")
+    .select("log_id")
+    .limit(500) as any)
+
+  // Count likes per log
+  const allLikeCount = new Map<string, number>()
+  for (const like of (topLikedRaw ?? []) as { log_id: string }[]) {
+    allLikeCount.set(like.log_id, (allLikeCount.get(like.log_id) ?? 0) + 1)
+  }
+  // Get the top liked log IDs
+  const topLikedLogIds = Array.from(allLikeCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 30)
+    .map(([id]) => id)
+
+  // Also get recent reviews to mix in
+  const [topLikedLogsRes, recentReviewLogsRes] = await Promise.all([
+    topLikedLogIds.length > 0
+      ? (supabase
+          .from("game_logs")
+          .select("*, users(*), games(*)")
+          .in("id", topLikedLogIds)
+          .not("review_text", "is", null) as any)
+      : Promise.resolve({ data: [] }),
+    (supabase
+      .from("game_logs")
+      .select("*, users(*), games(*)")
+      .not("review_text", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(20) as any),
+  ])
+
+  // Merge and deduplicate
+  const seenReviewIds = new Set<string>()
+  const allReviewRows: FeedRow[] = []
+  for (const log of [...(topLikedLogsRes.data ?? []), ...(recentReviewLogsRes.data ?? [])] as FeedRow[]) {
+    if (!seenReviewIds.has(log.id) && log.users && log.games) {
+      seenReviewIds.add(log.id)
+      allReviewRows.push(log)
+    }
+  }
+
+  const communityLogIds = allReviewRows.map(l => l.id)
+
+  const [communityLikesRes, communityUserLikesRes, communityCommentsRes] = await Promise.all([
+    (supabase.from("likes").select("log_id").in("log_id", communityLogIds.length > 0 ? communityLogIds : [""]) as any),
+    supabase.from("likes").select("log_id").eq("user_id", user.id).in("log_id", communityLogIds.length > 0 ? communityLogIds : [""]),
+    (supabase.from("comments").select("log_id").in("log_id", communityLogIds.length > 0 ? communityLogIds : [""]) as any),
+  ])
+
+  const communityLikeMap = new Map<string, number>()
+  for (const like of (communityLikesRes.data ?? []) as { log_id: string }[]) {
+    communityLikeMap.set(like.log_id, (communityLikeMap.get(like.log_id) ?? 0) + 1)
+  }
+  const communityLikedSet = new Set((communityUserLikesRes.data ?? []).map((l: { log_id: string }) => l.log_id))
+  const communityCommentMap = new Map<string, number>()
+  for (const c of (communityCommentsRes.data ?? []) as { log_id: string }[]) {
+    communityCommentMap.set(c.log_id, (communityCommentMap.get(c.log_id) ?? 0) + 1)
+  }
+
+  const communityReviews = allReviewRows
+    .filter(log => log.review_text && log.review_text.trim().length > 0)
+    .map(log => ({
+      id: log.id,
+      rating: log.rating,
+      status: log.status,
+      review_text: log.review_text,
+      contains_spoilers: log.contains_spoilers,
+      platforms: log.platforms,
+      playtime_hours: log.playtime_hours,
+      logged_date: log.logged_date,
+      created_at: log.created_at,
+      user_id: log.user_id,
+      username: log.users.username,
+      display_name: log.users.display_name,
+      avatar_url: log.users.avatar_url,
+      game_id: log.game_id,
+      game_title: log.games.title,
+      cover_url: log.games.cover_url,
+      game_slug: log.games.slug,
+      likeCount: communityLikeMap.get(log.id) ?? 0,
+      likedByMe: communityLikedSet.has(log.id),
+      commentCount: communityCommentMap.get(log.id) ?? 0,
+    }))
+    // Sort by most liked, then most recent
+    .sort((a, b) => b.likeCount - a.likeCount || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 6)
+
   return (
     <div className="min-h-screen">
       {/* ─── Welcome — Letterboxd serif italic ───────────────── */}
@@ -231,14 +321,14 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* ─── Popular Reviews — 2-col Letterboxd style ─────── */}
-        {recentReviews.length > 0 && (
+        {/* ─── Popular Reviews — community-wide ─────── */}
+        {communityReviews.length > 0 && (
           <section className="pb-8">
-            <SectionHeading title="Recent reviews" />
+            <SectionHeading title="Popular reviews" moreHref="/reviews" moreLabel="More" />
             <div className="grid gap-0 sm:grid-cols-2">
-              {recentReviews.map((review) => (
+              {communityReviews.map((review, idx) => (
                 <div
-                  key={review.id}
+                  key={`review-${review.id}-${idx}`}
                   className="flex gap-3 py-4 border-b border-zinc-700 sm:odd:pr-6 sm:even:pl-6 sm:even:border-l sm:even:border-zinc-700"
                 >
                   <Link
@@ -277,16 +367,12 @@ export default async function HomePage() {
                       {review.review_text}
                     </p>
                     <div className="flex items-center gap-3 mt-2 text-[11px] text-zinc-500">
-                      {review.likeCount > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3 w-3" /> {review.likeCount} {review.likeCount === 1 ? "like" : "likes"}
-                        </span>
-                      )}
-                      {review.commentCount > 0 && (
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" /> {review.commentCount}
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1">
+                        <Heart className="h-3 w-3" /> {review.likeCount} {review.likeCount === 1 ? "like" : "likes"}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" /> {review.commentCount} {review.commentCount === 1 ? "comment" : "comments"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -313,9 +399,9 @@ export default async function HomePage() {
           ) : (
             <>
               <div className="grid gap-x-8 gap-y-0 sm:grid-cols-2">
-                {feedEntries.slice(0, 6).map((entry) => (
+                {feedEntries.slice(0, 6).map((entry, idx) => (
                   <div
-                    key={entry.id}
+                    key={`feed-${entry.id}-${idx}`}
                     className="flex gap-3 py-3 border-b border-zinc-800/50"
                   >
                     <Link
